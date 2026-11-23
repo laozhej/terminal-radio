@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
+import { request } from 'node:http';
 import { createRadioServer } from '../末班电台服务.mjs';
 
 const page = await readFile(new URL('../末班电台.html', import.meta.url));
@@ -22,7 +23,10 @@ const server = createRadioServer({ page, token: fakeToken, fetchModel: async (ur
   return Response.json({ choices: [{ message: { content: upstreamContent } }] }, { status: upstreamStatus });
 } });
 const offlineServer = createRadioServer({ page, fetchModel() { assert.fail('Token is absent.'); } });
-const instances = [server, offlineServer];
+const studioHost = 'terminal-radio-demo.ms.show';
+const studio = createRadioServer({ page, studio: true, studioHost, token: fakeToken, fetchModel: async () =>
+  Response.json({ choices: [{ message: { content: 'pattern' } }] }) });
+const instances = [server, offlineServer, studio];
 
 async function serve(instance) {
   instance.listen(0, '127.0.0.1');
@@ -35,15 +39,37 @@ async function readResult(response, status, expected) {
   assert.deepEqual(await response.json(), expected);
 }
 
+// Use node:http for proxy requests because fetch replaces the Host header.
+async function requestPage(base, host, path = '/') {
+  const req = request(new URL(path, base), { headers: { Host: host } });
+  const received = once(req, 'response');
+  req.end();
+  const [response] = await received;
+  response.resume();
+  return response;
+}
+
 try {
-  const [base, offline] = await Promise.all(instances.map(serve));
+  const [base, offline, hosted] = await Promise.all(instances.map(serve));
   const makeCall = (body, extra = {}) => fetch(`${base}/api/radio`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...extra }, body: JSON.stringify(body),
   });
   const question = { channel: 'caller', question: '红灯每一轮有几次是短闪？', quoteId: null };
   const firstPage = await fetch(base);
   assert.equal(firstPage.status, 200);
+  assert.match(firstPage.headers.get('content-security-policy'), /frame-ancestors 'none'/);
   assert.ok((await firstPage.text()).includes('id="free-question"'));
+  assert.equal((await requestPage(base, studioHost)).statusCode, 403);
+  const studioPage = await requestPage(hosted, studioHost, '/?__theme=dark');
+  assert.equal(studioPage.statusCode, 200);
+  assert.match(studioPage.headers['content-security-policy'], /frame-ancestors 'self' https:\/\/modelscope\.cn https:\/\/www\.modelscope\.cn$/);
+  assert.equal((await fetch(hosted, { method: 'HEAD' })).status, 200);
+  const classifyViaProxy = (origin, site) => fetch(`${hosted}/api/radio`, {
+    method: 'POST', headers: { Origin: origin, 'Sec-Fetch-Site': site, 'Content-Type': 'application/json' }, body: JSON.stringify(question),
+  });
+  await readResult(await classifyViaProxy(`https://${studioHost}`, 'none'), 200, { intent: 'pattern' });
+  await readResult(await classifyViaProxy('https://radio-alias.ms.show', 'same-origin'), 200, { intent: 'pattern' });
+  await readResult(await classifyViaProxy('https://other.ms.show', 'same-site'), 403, { error: 'forbidden' });
   await readResult(await fetch(`${base}/api/status`), 200, { available: true });
   await readResult(await fetch(`${offline}/api/status`), 200, { available: false });
   await readResult(await fetch(`${offline}/api/radio`, { method: 'POST' }), 503, { error: 'unconfigured' });

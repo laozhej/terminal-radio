@@ -136,28 +136,37 @@ async function chooseIntent(turn, { token, model, fetchModel, signal }) {
   }
 }
 
-export function createRadioServer({ page, token = '', model = defaultModel, fetchModel = fetch } = {}) {
+function acceptsRequest(headers, port, studio, studioHost) {
+  const { host, origin } = headers;
+  const loopback = host === `127.0.0.1:${port}` || host === `localhost:${port}`;
+  if (!studio) return loopback && (!origin || origin === `http://${host}`);
+  if (!origin || (loopback && origin === `http://${host}`)) return true;
+  // 代理可能改写 Host，仍可用空间的运行域名或浏览器的同源标记核对来源。
+  if (origin === `https://${studioHost || host}` || origin === `https://${host}`) return true;
+  return origin.startsWith('https://') && headers['sec-fetch-site'] === 'same-origin';
+}
+
+export function createRadioServer({ page, token = '', model = defaultModel, fetchModel = fetch, studio = false, studioHost } = {}) {
+  const frameAncestors = studio ? "'self' https://modelscope.cn https://www.modelscope.cn" : "'none'";
   const server = createServer({ requestTimeout: 20_000, headersTimeout: 10_000 }, async (request, response) => {
-    const port = server.address()?.port;
-    const host = request.headers.host;
-    const origin = request.headers.origin;
-    if (![ `127.0.0.1:${port}`, `localhost:${port}` ].includes(host) || (origin && origin !== `http://${host}`)) {
+    if (!acceptsRequest(request.headers, server.address().port, studio, studioHost)) {
       sendJson(response, 403, { error: 'forbidden' });
       return;
     }
 
-    if (request.method === 'GET' && request.url === '/') {
+    const path = request.url.split('?', 1)[0];
+    if ((request.method === 'GET' || request.method === 'HEAD') && path === '/') {
       send(response, 200, page, {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+        'Content-Security-Policy': `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors ${frameAncestors}`,
       });
       return;
     }
-    if (request.method === 'GET' && request.url === '/api/status') {
+    if (request.method === 'GET' && path === '/api/status') {
       sendJson(response, 200, { available: Boolean(token) });
       return;
     }
-    if (request.method !== 'POST' || request.url !== '/api/radio') {
+    if (request.method !== 'POST' || path !== '/api/radio') {
       sendJson(response, 404, { error: 'not_found' });
       return;
     }
@@ -182,7 +191,9 @@ export function createRadioServer({ page, token = '', model = defaultModel, fetc
 }
 
 async function start() {
-  const port = Number(process.env.RADIO_PORT || '8765');
+  const studio = process.argv.includes('--studio');
+  const host = studio ? '0.0.0.0' : '127.0.0.1';
+  const port = studio ? 7860 : Number(process.env.RADIO_PORT || '8765');
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     process.exitCode = 1;
     console.error('RADIO_PORT 必须是有效的端口号。');
@@ -191,16 +202,16 @@ async function start() {
   const token = tokenKeys.map((key) => process.env[key]?.trim()).find(Boolean) ?? '';
   const model = process.env.MODELSCOPE_MODEL?.trim() || defaultModel;
   const page = await readFile(new URL('./末班电台.html', import.meta.url));
-  const server = createRadioServer({ page, token, model });
-  const url = `http://127.0.0.1:${port}/`;
+  const server = createRadioServer({ page, token, model, studio, studioHost: process.env.STUDIO_HOST });
+  const url = `http://${host}:${port}/`;
   server.on('error', (error) => {
     process.exitCode = 1;
-    console.error(error.code === 'EADDRINUSE' ? `端口 ${port} 已被使用。可设 RADIO_PORT 指定其他端口。` : '无法启动本地电台服务。');
+    console.error(error.code === 'EADDRINUSE' ? `端口 ${port} 已被使用。` : '无法启动电台服务。');
   });
-  server.listen(port, '127.0.0.1', () => {
+  server.listen(port, host, () => {
     console.log(`末班电台 ${url}`);
     console.log(token ? `自由提问使用 ${model}。` : '未配置魔搭 Token，可用预设问法。');
-    if (process.argv.includes('--open') && process.platform === 'darwin') {
+    if (!studio && process.argv.includes('--open') && process.platform === 'darwin') {
       const browserEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !tokenKeys.includes(key)));
       const opener = spawn('/usr/bin/open', [url], { env: browserEnv, stdio: 'ignore' });
       opener.on('error', () => console.error(`请在浏览器打开 ${url}`));
