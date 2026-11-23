@@ -1,4 +1,4 @@
-// 表现层：开场来电、音效、逐字回放、引用飞入、派车动画。
+// 表现层：开场来电、音效、逐字回放、证据飞入、引用飞入、手机折叠、派车动画。
 // 只听 radio-game.js 发出的 radio:* 事件，不读写游戏状态。整段删掉，游戏照常可玩。
 (() => {
   const root = document.documentElement;
@@ -13,6 +13,7 @@
   const receiver = document.querySelector('.rx');
   const mapPanel = document.querySelector('.map-panel');
   const radioPanel = document.querySelector('.radio-panel');
+  const evidencePanel = document.querySelector('.evidence-panel');
   const map = () => window.TerminalRadioMap;
   const timers = new Map();
 
@@ -330,6 +331,8 @@
 
   function setSpeaking(on) {
     receiver?.classList.toggle('is-speaking', on);
+    // 通话灯也看这个：对方说话时，刚用掉的那颗在呼吸。
+    root.toggleAttribute('data-speaking', on);
     scope.speak(on);
   }
 
@@ -341,6 +344,31 @@
     storyClock.textContent = now;
     flash(storyClock, 'is-ticking', 600);
   }
+
+  // ---------- 手机：地图收成缩略带，证据收成一行 ----------
+  // 只在窄屏起作用（样式表里只有手机才认 data-fold）。删掉这一段，手机上就是整张地图和完整证据卡。
+  function folder(panel, toggle, labels, onOpen) {
+    if (!panel || !toggle) return { open() {}, close() {} };
+    const label = toggle.querySelector('[data-fold-label]') ?? toggle;
+    const show = (open) => {
+      panel.dataset.fold = open ? 'open' : 'strip';
+      toggle.setAttribute('aria-expanded', String(open));
+      label.textContent = open ? labels[1] : labels[0];
+    };
+    toggle.hidden = false;
+    toggle.addEventListener('click', () => {
+      const open = panel.dataset.fold !== 'open';
+      show(open);
+      audio.play(open ? 'select' : 'unquote');
+      if (open) onOpen?.();
+    });
+    show(false);
+    return { open: () => show(true), close: () => show(false) };
+  }
+  const mapFold = folder(mapPanel, byId('map-fold'), ['展开地图', '收起地图'], () => {
+    if (narrow.matches) mapPanel.scrollIntoView({ block: 'nearest', behavior: still.matches ? 'auto' : 'smooth' });
+  });
+  const boardFold = folder(evidencePanel, document.querySelector('[data-evidence-fold]'), ['展开全文', '收起全文']);
 
   // ---------- 逐字回放 ----------
   function replay(length = 0, delay = 0) {
@@ -358,6 +386,44 @@
     window.clearTimeout(timers.get('speaking-end'));
     setSpeaking(false);
   });
+
+  // ---------- 证据到手：回话里划线的那句话复制成一张纸条，飞进证据板上它的空位 ----------
+  const letterPace = 24;
+  const flightTime = 420;
+  function flyCite(clue, revealDelay) {
+    const card = document.querySelector(`.evidence-card[data-clue="${clue}"]`);
+    const cite = transmission?.querySelector('.cite');
+    if (!card || !cite || still.matches || typeof card.animate !== 'function') return;
+    const glyphs = cite.querySelectorAll('.glyph');
+    const lastLetter = Number(glyphs[glyphs.length - 1]?.style.getPropertyValue('--i') || 0);
+    const takeOff = revealDelay + lastLetter * letterPace + 140;
+    // 卡片先藏着，纸条落到的那一刻再弹出来。
+    card.style.setProperty('--land-delay', `${takeOff + flightTime - 40}ms`);
+    later('cite-flight', takeOff, () => {
+      const from = cite.getBoundingClientRect();
+      const to = card.getBoundingClientRect();
+      if (!from.width || !to.width) return;
+      const page = (box) => ({
+        left: `${box.left + window.scrollX}px`,
+        top: `${box.top + window.scrollY}px`,
+        width: `${box.width}px`,
+        height: `${box.height}px`,
+      });
+      const ghost = document.createElement('div');
+      ghost.className = 'cite-ghost';
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.textContent = cite.textContent;
+      const start = page(from);
+      Object.assign(ghost.style, start);
+      document.body.append(ghost);
+      const flight = ghost.animate([
+        { ...start, opacity: 0, transform: 'none' },
+        { ...start, opacity: 1, transform: 'translateY(-4px) rotate(-1deg)', offset: 0.2 },
+        { ...page(to), opacity: 1, transform: 'none' },
+      ], { duration: flightTime, easing: 'cubic-bezier(.45, 0, .2, 1)' });
+      flight.finished.catch(() => {}).then(() => ghost.remove());
+    });
+  }
 
   // ---------- 开场来电 ----------
   // 自动化浏览器里默认跳过，避免挡住现有检查脚本。#intro=1 强制显示，#intro=0 强制跳过（写成 ?intro= 也认）。
@@ -404,8 +470,11 @@
     if (radioPanel) radioPanel.inert = false;
     map()?.clear();
     timers.forEach((timer) => window.clearTimeout(timer));
+    document.querySelectorAll('.cite-ghost, .quote-ghost').forEach((ghost) => ghost.remove());
     setSpeaking(false);
     syncClock();
+    mapFold.close();
+    boardFold.close();
     if (!detail.replay) return;
     replay(transmission?.textContent.length ?? 0, 200);
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -413,10 +482,13 @@
   });
 
   document.addEventListener('radio:call', ({ detail }) => {
+    if (detail.clue) flyCite(detail.clue, 80);
     audio.play('reply');
     replay(detail.length, 80);
     syncClock();
     flash(byId('call-count'), 'is-ticking', 600);
+    document.querySelectorAll('[data-calls-left]').forEach((readout) => flash(readout, 'is-ticking', 600));
+    if (!detail.remaining) mapFold.open();
     if (detail.clue) {
       later('evidence-cue', 300, () => audio.play('evidence'));
       if (!firstClueSeen) {
@@ -443,6 +515,7 @@
   }
   document.addEventListener('radio:select', ({ detail }) => {
     audio.play('select');
+    mapFold.open();
     previewRoute(detail.location);
   });
   document.addEventListener('radio:exclude', ({ detail }) => {
@@ -450,8 +523,9 @@
     previewRoute(detail.location);
   });
 
-  // 手机上地图在最上面，问完话要回去派车：给一个直达的入口。
+  // 手机上地图在证据条下面，收着：问完话一键展开整张，滚过去准备派车。
   document.querySelector('[data-to-map]')?.addEventListener('click', () => {
+    mapFold.open();
     mapPanel?.scrollIntoView({ block: 'start', behavior: still.matches ? 'auto' : 'smooth' });
   });
 
@@ -520,8 +594,8 @@
     ghost.setAttribute('aria-hidden', 'true');
     ghost.textContent = card.querySelector('.evidence-name')?.textContent ?? '';
     Object.assign(ghost.style, {
-      left: `${from.left}px`,
-      top: `${from.top}px`,
+      left: `${from.left + window.scrollX}px`,
+      top: `${from.top + window.scrollY}px`,
       width: `${from.width}px`,
       height: `${from.height}px`,
     });
@@ -544,6 +618,7 @@
     if (!drive) return;
     // 结果已经写进页面。先把它藏住，等救援车开到再露出来。
     root.dataset.phase = 'dispatching';
+    mapFold.open();
     audio.play('dispatch');
     if (narrow.matches && mapPanel) {
       window.scrollTo({ top: Math.max(0, mapPanel.getBoundingClientRect().top + window.scrollY - 64), behavior: 'instant' });

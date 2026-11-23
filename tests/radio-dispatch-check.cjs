@@ -75,13 +75,17 @@ async function main() {
       assert(fits, `${width}px 核对条或按钮超出地图面板`);
     }
 
-    // 问完话回地图的入口
+    // 问完话去地图的入口：地图在证据条下面，点了要展开整张，地图和派车钮都滚进屏幕
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.locator('[data-to-map]').scrollIntoViewIfNeeded();
+    await page.getByRole('button', { name: '收起地图', exact: true }).tap();
+    assert((await page.locator('.survey-map').boundingBox()).height <= 130, '收起后地图应是缩略带');
+    assert.equal(await page.locator('#map-points [data-location="gate"]').getAttribute('aria-pressed'), 'true', '收起地图不改选中');
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
     await page.locator('[data-to-map]').tap();
     await page.waitForFunction(() => {
-      const top = document.querySelector('.map-panel').getBoundingClientRect().top;
-      return top >= 0 && top < 120;
+      const map = document.querySelector('.survey-map').getBoundingClientRect();
+      const button = document.querySelector('#dispatch-button').getBoundingClientRect();
+      return map.height > 200 && map.top >= 0 && button.bottom <= window.innerHeight;
     }, null, { timeout: 3000 });
 
     // 派车后核对条收起
