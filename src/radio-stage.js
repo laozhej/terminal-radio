@@ -450,6 +450,11 @@
     previewRoute(detail.location);
   });
 
+  // 手机上地图在最上面，问完话要回去派车：给一个直达的入口。
+  document.querySelector('[data-to-map]')?.addEventListener('click', () => {
+    mapPanel?.scrollIntoView({ block: 'start', behavior: still.matches ? 'auto' : 'smooth' });
+  });
+
   // ---------- 把证据卡拖到「带上证词」 ----------
   // 和点「引用」是同一件事：落下时替玩家按那张卡的引用按钮。
   const board = byId('evidence-list');

@@ -73,7 +73,10 @@
           </ul>
         </div>
         <div class="dispatch-toolbar">
-          <p id="map-feedback" class="map-feedback" aria-live="polite">选择派车地点</p>
+          <div class="dispatch-brief">
+            <p id="map-feedback" class="map-feedback" aria-live="polite">选择派车地点</p>
+            <div class="dispatch-check" role="group" data-dispatch-check hidden></div>
+          </div>
           <div class="dispatch-actions">
             <button id="exclude-button" type="button" class="button-quiet" hidden><span data-button-label>标记排除</span></button>
             <button id="dispatch-button" type="button" class="button-primary button-dispatch" disabled>
@@ -129,6 +132,10 @@
             <h3 class="prompts-label">或用预设问题</h3>
             <div id="prompt-list" class="presets" role="group" aria-label="预设问题"></div>
           </div>
+          <button type="button" class="to-map" data-to-map>
+            <span>看地图，准备派车</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19.500V5M6 10.500l6-6 6 6"/></svg>
+          </button>
         </div>
       </section>
 

@@ -331,8 +331,9 @@ html[data-calls="1"] .signal-bar:not(.is-used) { background: var(--warning); box
 
 /* 灯号：点是短闪，杠是长闪，按真实节奏依次亮起。一拍 0.26 秒，短 1 拍，长 3 拍，间隔 1 拍，每轮停 4 拍。 */
 .lamp-code { --code-ink: var(--lamp-ink); display: inline-flex; align-items: center; gap: 4px; }
-.beat { flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--code-ink); --rest: .42; }
-.fact .beat { --rest: .5; }
+/* 不亮的时候也要看得清形状：记号是拿来和证词对的，不只是装饰。 */
+.beat { flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--code-ink); --rest: .66; }
+.fact .beat { --rest: .74; }
 .beat.is-long { width: 17px; }
 .lamp-code[data-code] .beat { animation: flash-short-11 var(--cycle, 2.86s) steps(1, end) infinite; animation-delay: var(--at, 0s); }
 .lamp-code[data-units="11"] .beat.is-long { animation-name: flash-long-11; }
@@ -400,7 +401,22 @@ html[data-calls="1"] .signal-bar:not(.is-used) { background: var(--warning); box
   border-top: 1px solid var(--line);
 }
 .dispatch-actions { display: flex; align-items: center; gap: 10px; }
+.dispatch-brief { flex: 1 1 auto; display: grid; gap: 4px; min-width: 0; }
 .map-feedback { color: var(--muted); font-size: 14px; }
+.map-feedback:empty { display: none; }
+/* 派车前核对：证词在上，这一站的档案紧挨在下，两行记号对齐，一眼看出一样不一样。 */
+.check-title { display: none; }
+.check-list { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); justify-content: start; gap: 3px 28px; margin: 0; }
+.check-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.check-name { flex: none; width: 4.2em; color: var(--muted); font-size: 12px; letter-spacing: .04em; }
+.check-value { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 14px; font-weight: 650; white-space: nowrap; }
+.check-value.is-off { color: var(--warning); }
+.check-row.is-missing .check-text { color: #7f8684; font-weight: 400; }
+.dispatch-check .lamp-code { --code-ink: #ff6a5a; gap: 5px; }
+/* 两行在同一刻创建，所以同一种灯号会齐步闪，不同的灯号会错开。 */
+.dispatch-check .beat { --rest: .82; width: 8px; height: 8px; border-radius: 4px; }
+.dispatch-check .beat.is-long { width: 22px; }
+.to-map { display: none; }
 .button-primary, .button-quiet, .replay-button, .next-case-button {
   display: inline-flex;
   align-items: center;
@@ -1164,14 +1180,14 @@ body::after {
   .map-heading::before { display: none; }
   .map-heading h2 { order: 1; font-size: 23px; text-shadow: none; }
   .map-area { order: 2; margin: 0; font-size: 11px; letter-spacing: .1em; }
-  .survey-map { flex: none; height: clamp(256px, 66vw, 340px); min-height: 0; }
+  .map-panel { scroll-margin-top: 66px; }
+  .survey-map { flex: none; height: clamp(280px, 74vw, 360px); min-height: 0; }
   .map-point { --point-size: 40px; gap: 7px; }
   .point-facts { top: calc(100% + 4px); gap: 4px; }
   .point-icon { border-radius: 9px; }
   .point-icon svg { width: 24px; height: 24px; }
   .point-label { padding-inline: 7px; font-size: 14px; }
   .fact { height: 22px; padding: 0 7px 0 6px; gap: 5px; }
-  .fact-code .fact-text { display: none; }
   .fact .beat { width: 5px; height: 5px; }
   .fact .beat.is-long { width: 13px; }
   .map-witness { top: 10px; right: 40px; padding: 3px 8px 3px 9px; font-size: 12px; gap: 6px; }
@@ -1181,6 +1197,33 @@ body::after {
   .map-north { top: 10px; right: 12px; }
   .dispatch-toolbar { min-height: 62px; padding: 8px 10px 8px 14px; }
   .dispatch-actions { gap: 7px; margin-left: auto; }
+  /* 选中站房后，核对条占满一行，按钮在它下面，拇指够得着。 */
+  .dispatch-toolbar[data-checking] { flex-direction: column; align-items: stretch; gap: 11px; padding: 12px 12px 12px 14px; }
+  .dispatch-toolbar[data-checking] .dispatch-actions { margin-left: 0; }
+  .dispatch-toolbar[data-checking] .button-dispatch { flex: 1; }
+  .check-title { display: block; margin-bottom: 7px; color: var(--amber); font-size: 12px; font-weight: 600; letter-spacing: .1em; }
+  .check-list { grid-auto-flow: row; grid-template-rows: none; gap: 7px; }
+  .check-row { gap: 12px; min-height: 24px; }
+  .check-name { width: 4.4em; font-size: 13px; }
+  .check-value { font-size: 16px; gap: 11px; }
+  .dispatch-check .lamp-code { gap: 6px; }
+  .dispatch-check .beat { width: 10px; height: 10px; border-radius: 5px; }
+  .dispatch-check .beat.is-long { width: 28px; }
+  .to-map {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    border: 1px dashed #6f5c37;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--amber);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .to-map svg { width: 18px; height: 18px; }
+  html[data-calls="0"] .to-map { border-style: solid; background: var(--amber-surface); }
   .button-primary, .button-quiet { padding-inline: 13px; }
   .button-dispatch { padding-inline: 15px 12px; }
   .map-feedback { font-size: 13px; }
@@ -1223,6 +1266,7 @@ body::after {
   .map-point { --point-size: 36px; gap: 5px; }
   .point-label { padding-inline: 5px; font-size: 13px; }
   .fact { padding: 0 6px 0 5px; font-size: 11px; }
+  .fact-code .fact-text { display: none; }
   .map-area { display: none; }
   .map-depot span { display: none; }
   .intro-brief br { display: none; }
@@ -1291,7 +1335,10 @@ body::after {
           </ul>
         </div>
         <div class="dispatch-toolbar">
-          <p id="map-feedback" class="map-feedback" aria-live="polite">选择派车地点</p>
+          <div class="dispatch-brief">
+            <p id="map-feedback" class="map-feedback" aria-live="polite">选择派车地点</p>
+            <div class="dispatch-check" role="group" data-dispatch-check hidden></div>
+          </div>
           <div class="dispatch-actions">
             <button id="exclude-button" type="button" class="button-quiet" hidden><span data-button-label>标记排除</span></button>
             <button id="dispatch-button" type="button" class="button-primary button-dispatch" disabled>
@@ -1347,6 +1394,10 @@ body::after {
             <h3 class="prompts-label">或用预设问题</h3>
             <div id="prompt-list" class="presets" role="group" aria-label="预设问题"></div>
           </div>
+          <button type="button" class="to-map" data-to-map>
+            <span>看地图，准备派车</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19.500V5M6 10.500l6-6 6 6"/></svg>
+          </button>
         </div>
       </section>
 
@@ -2452,6 +2503,11 @@ body::after {
     previewRoute(detail.location);
   });
 
+  // 手机上地图在最上面，问完话要回去派车：给一个直达的入口。
+  document.querySelector('[data-to-map]')?.addEventListener('click', () => {
+    mapPanel?.scrollIntoView({ block: 'start', behavior: still.matches ? 'auto' : 'smooth' });
+  });
+
   // ---------- 把证据卡拖到「带上证词」 ----------
   // 和点「引用」是同一件事：落下时替玩家按那张卡的引用按钮。
   const board = byId('evidence-list');
@@ -2732,6 +2788,7 @@ body::after {
       evidenceCount: document.querySelector('[data-evidence-count]'),
       mapWitness: document.querySelector('[data-map-witness]'),
       caseNumber: document.querySelector('[data-case-number]'),
+      dispatchCheck: document.querySelector('[data-dispatch-check]'),
     };
     const root = document.documentElement;
     const channelButtons = [...byId('radio-channels').querySelectorAll('button[data-channel]')];
@@ -3112,6 +3169,35 @@ body::after {
           node('span', 'witness-text', clues.signal.codeLabel),
         );
       }
+      renderCheck();
+    }
+
+    // 派车前核对：选中一处站房后，把求救证词和这一站的两项记录并排放在派车按钮旁。
+    // 只摆已取得的记录，没取得的写「未取得」。记号静止不闪，上下两行对齐，对不对得上由玩家自己看。
+    function renderCheck() {
+      const holder = elements.dispatchCheck;
+      if (!holder) return;
+      const id = state.outcome ? null : state.selected;
+      holder.hidden = !id;
+      holder.closest('.dispatch-toolbar')?.toggleAttribute('data-checking', Boolean(id));
+      holder.replaceChildren();
+      if (!id) return;
+      holder.setAttribute('aria-label', `派车前核对：${locations[id]}`);
+      const list = node('dl', 'check-list');
+      [
+        ['signal', clues.signal.codeLabel, clues.signal.code],
+        ['archive', clues.archive.marks[id].label, clues.archive.marks[id].code],
+        ['outage', clues.outage.marks[id].label, null, clues.outage.marks[id].power],
+      ].forEach(([clue, label, code, power]) => {
+        const held = state.evidence.has(clue);
+        const value = node('dd', held && power ? `check-value is-${power}` : 'check-value');
+        if (held && code) value.append(lampCode(code));
+        value.append(node('span', 'check-text', held ? label : '未取得'));
+        const row = node('div', held ? 'check-row' : 'check-row is-missing');
+        row.append(node('dt', 'check-name', clues[clue].name), value);
+        list.append(row);
+      });
+      holder.append(node('p', 'check-title', `${locations[id]} · 派车前核对`), list);
     }
 
     function completeCall(prompt, button, question = prompt.question, viaModel = false) {
@@ -3202,6 +3288,7 @@ body::after {
         }
         elements.mapFeedback.textContent = feedback;
       }
+      renderCheck();
     }
 
     function openDispatch() {
