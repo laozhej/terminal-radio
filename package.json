@@ -1,0 +1,17 @@
+{
+  "name": "terminal-radio",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "node 末班电台服务.mjs",
+    "test": "node tests/radio-model-server-check.mjs",
+    "test:browser": "node tests/radio-file-smoke.cjs && node tests/radio-model-browser-check.cjs && node tests/radio-shuffle-check.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

@@ -1,0 +1,3393 @@
+<!doctype html>
+<html lang="zh-Hans" data-phase="play">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17191b">
+  <meta name="description" content="暴雨夜的调度台。五次通话，一辆车，一个地点。">
+  <title>末班电台 · 雨夜红灯</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317191b'/%3E%3Cpath d='M10 10a8.5 8.5 0 000 12M22 10a8.5 8.5 0 010 12' fill='none' stroke='%23ffc463' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='3.6' fill='%23ff4f3f'/%3E%3C/svg%3E">
+  <style>
+/* 末班电台 · 雨夜调度台
+   三种材质：暗色玻璃是正在发生的事（地图、电台），纸是已经记下来的事（证词、派车单、结案），
+   琥珀色只给能按的东西，红色只留给那盏灯。 */
+:root {
+  color-scheme: dark;
+  --background: #17191b;
+  --panel: #202326;
+  --panel-deep: #14171a;
+  --panel-raised: #292d30;
+  --line: #33393c;
+  --line-strong: #566063;
+  --ink: #f0ece1;
+  --muted: #a8aca9;
+  --amber: #ffc463;
+  --amber-bright: #ffda94;
+  --amber-surface: #352b1c;
+  --amber-ink: #271e13;
+  --lamp: #ff4f3f;
+  --lamp-ink: #b4281b;
+  --paper: #e6dcc6;
+  --paper-shade: #d3c7ad;
+  --paper-ink: #1d1a15;
+  --paper-muted: #5c5547;
+  --success: #bdc6a0;
+  --warning: #f0a78f;
+  --ui: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --display: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "STZhongsong", "SimSun", serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  font-family: var(--ui);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-width: 0;
+  min-height: 100svh;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse 80rem 46rem at 12% -8%, #25292c 0%, transparent 62%),
+    var(--background);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, p, ul, ol { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+button {
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+button:disabled { cursor: default; }
+button:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+main:focus { outline: none; }
+::selection { color: var(--background); background: var(--amber); }
+
+/* ---------- 版面 ---------- */
+.desk {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(100%, 1560px);
+  min-height: 100svh;
+  margin-inline: auto;
+  padding: 0 28px 24px;
+}
+.desk-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(400px, 1fr);
+  grid-template-rows: minmax(420px, 1fr) auto;
+  grid-template-areas: "map radio" "evidence radio";
+  gap: 14px;
+  min-height: 0;
+}
+.panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #23272a, var(--panel) 46%);
+  box-shadow: 0 12px 30px #0b0e0f40, inset 0 1px #ffffff08;
+}
+.map-panel { grid-area: map; }
+.radio-panel { grid-area: radio; }
+.evidence-panel { grid-area: evidence; }
+.outcome { grid-area: radio; }
+
+/* ---------- 顶栏 ---------- */
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 68px;
+}
+.identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.station-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #7c6238;
+  border-radius: 9px;
+  background: var(--amber-surface);
+  color: var(--amber);
+}
+.station-mark svg { width: 24px; height: 24px; }
+.station-lamp { fill: var(--lamp); }
+.identity h1 {
+  font: 900 27px/1 var(--display);
+  letter-spacing: .12em;
+  white-space: nowrap;
+}
+[data-case-number] { color: var(--amber); }
+.shift {
+  padding-left: 13px;
+  border-left: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+.masthead-tools { display: flex; align-items: center; gap: 18px; }
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+}
+.icon-button:hover { color: var(--ink); border-color: var(--line-strong); }
+.icon-button svg { width: 21px; height: 21px; }
+.icon-button[aria-pressed="true"] .sound-off,
+.icon-button[aria-pressed="false"] .sound-on { display: none; }
+.budget { display: flex; align-items: center; gap: 14px; }
+.budget-reading { display: flex; align-items: baseline; gap: 7px; }
+.budget-label { color: var(--muted); font-size: 13px; letter-spacing: .06em; }
+.budget-number {
+  display: inline-block;
+  min-width: .66em;
+  color: var(--amber);
+  font: 700 34px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  transition: color .3s;
+}
+.budget-number.is-ticking { animation: tick .55s cubic-bezier(.2, .8, .3, 1); }
+.budget-total { color: var(--muted); font: 14px/1 var(--mono); }
+.signal-meter { display: flex; align-items: flex-end; gap: 4px; height: 28px; }
+.signal-bar {
+  width: 7px;
+  border-radius: 2px;
+  background: var(--amber);
+  box-shadow: 0 0 9px #ffc46340;
+  transition: background .35s, box-shadow .35s;
+}
+.signal-bar:nth-child(1) { height: 36%; }
+.signal-bar:nth-child(2) { height: 52%; }
+.signal-bar:nth-child(3) { height: 68%; }
+.signal-bar:nth-child(4) { height: 84%; }
+.signal-bar:nth-child(5) { height: 100%; }
+.signal-bar.is-used { background: #3a4144; box-shadow: none; animation: burn-out .6s ease-out; }
+html[data-calls="1"] .budget-number,
+html[data-calls="0"] .budget-number { color: var(--warning); }
+html[data-calls="1"] .signal-bar:not(.is-used) { background: var(--warning); box-shadow: 0 0 9px #f0a78f50; }
+
+/* ---------- 地图 ---------- */
+.map-panel { position: relative; display: flex; flex-direction: column; overflow: hidden; }
+.map-heading {
+  position: absolute;
+  z-index: 2;
+  top: 20px;
+  left: 24px;
+  pointer-events: none;
+}
+.map-heading::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -22px -90px -44px -26px;
+  background: radial-gradient(ellipse 62% 60% at 34% 44%, #111517f5 0%, #111517c0 52%, #11151700 100%);
+}
+.map-area {
+  margin-bottom: 6px;
+  color: var(--amber);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .16em;
+}
+.map-heading h2 {
+  font: 900 clamp(28px, 2.7vw, 40px)/1.05 var(--display);
+  letter-spacing: .1em;
+  text-shadow: 0 2px 16px #0c0f10, 0 0 2px #0c0f10;
+}
+.map-heading em, .intro em { font-style: normal; color: var(--lamp); text-shadow: 0 0 26px #ff4f3f70, 0 2px 16px #0c0f10; }
+.survey-map {
+  position: relative;
+  isolation: isolate;
+  flex: 1 1 0;
+  min-height: 340px;
+  background: #171c1e;
+  overflow: hidden;
+}
+.survey-map canvas, .map-points { position: absolute; inset: 0; width: 100%; height: 100%; }
+.survey-live { pointer-events: none; }
+.map-points { z-index: 1; pointer-events: none; }
+.map-point {
+  position: absolute;
+  display: grid;
+  grid-template-columns: var(--point-size) auto;
+  grid-template-areas: "icon tag";
+  align-items: center;
+  justify-content: start;
+  gap: 9px;
+  padding: 0;
+  --point-size: 46px;
+  transform: translate(calc(var(--point-size) / -2), calc(var(--point-size) / -2));
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  white-space: nowrap;
+  pointer-events: auto;
+  transition: opacity .4s;
+}
+.map-point[data-location="gate"] { left: 29%; top: 25%; }
+.map-point[data-location="pump"] { left: 68%; top: 55%; }
+.map-point[data-location="warehouse"] { left: 35%; top: 76%; }
+.map-point:focus-visible { outline-offset: 6px; border-radius: 10px; }
+.point-icon {
+  grid-area: icon;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--point-size);
+  height: var(--point-size);
+  border: 1px solid #9b8351;
+  border-radius: 10px;
+  background: #1c2022;
+  color: var(--amber);
+  box-shadow: 0 4px 16px #080a0bb8;
+  transition: background .2s, color .2s, border-color .2s, transform .2s;
+}
+.point-icon svg { width: 27px; height: 27px; }
+.point-icon::before, .point-icon::after { content: ""; position: absolute; pointer-events: none; }
+.point-tag { grid-area: tag; justify-self: start; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.point-label {
+  padding: 2px 9px;
+  border: 1px solid #70787680;
+  border-radius: 5px;
+  background: #11161af2;
+  box-shadow: 0 2px 8px #0b0e0f80;
+  font-size: 15px;
+  font-weight: 650;
+  transition: border-color .2s, color .2s;
+}
+.point-status {
+  padding: 0 6px;
+  border-radius: 3px;
+  background: #11161af2;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.map-point:not(:disabled):hover .point-icon { transform: scale(1.06); border-color: var(--amber); }
+.map-point:not(:disabled):hover .point-label { border-color: var(--amber); }
+.map-point[aria-pressed="true"] .point-icon { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
+.map-point[aria-pressed="true"] .point-icon::after {
+  inset: -9px;
+  border: 1.5px dashed var(--amber);
+  border-radius: 50%;
+  animation: turn 12s linear infinite;
+}
+.map-point[aria-pressed="true"] .point-label { border-color: var(--amber); color: var(--amber-bright); }
+.map-point.is-excluded .point-icon { background: #181c1e; color: #6f7879; border-color: #4c5557; }
+.map-point.is-excluded .point-icon::before {
+  inset: 5px;
+  background:
+    linear-gradient(45deg, transparent 46%, var(--warning) 46% 54%, transparent 54%),
+    linear-gradient(-45deg, transparent 46%, var(--warning) 46% 54%, transparent 54%);
+}
+.map-point.is-excluded .point-label { color: var(--muted); text-decoration: line-through; }
+.map-point.is-excluded .point-status { color: var(--warning); }
+.map-point.is-excluded[aria-pressed="true"] .point-icon { border-color: var(--amber); }
+
+/* 记录标到地图上 */
+.point-facts { position: absolute; top: calc(100% + 6px); left: 0; display: flex; gap: 5px; }
+.point-facts:empty { display: none; }
+.fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px 0 7px;
+  border: 1px solid #3c4447;
+  border-radius: 12px;
+  background: #0e1214eb;
+  color: #dcd8cc;
+  font-size: 12px;
+  font-weight: 600;
+  animation: rise-in .5s cubic-bezier(.2, .8, .3, 1) both;
+}
+.fact .lamp-code { --code-ink: #ff6a5a; }
+.fact-power::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.fact-power.is-on { color: var(--muted); }
+.fact-power.is-on::before { background: #7f8a82; }
+.fact-power.is-off { color: var(--warning); border-color: #855748; }
+.fact-power.is-off::before {
+  border: 1.5px solid currentColor;
+  background: linear-gradient(45deg, transparent 40%, currentColor 40% 60%, transparent 60%);
+}
+
+/* 灯号：点是短闪，杠是长闪，按真实节奏依次亮起。一拍 0.26 秒，短 1 拍，长 3 拍，间隔 1 拍，每轮停 4 拍。 */
+.lamp-code { --code-ink: var(--lamp-ink); display: inline-flex; align-items: center; gap: 4px; }
+.beat { flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--code-ink); --rest: .42; }
+.fact .beat { --rest: .5; }
+.beat.is-long { width: 17px; }
+.lamp-code[data-code] .beat { animation: flash-short-11 var(--cycle, 2.86s) steps(1, end) infinite; animation-delay: var(--at, 0s); }
+.lamp-code[data-units="11"] .beat.is-long { animation-name: flash-long-11; }
+.lamp-code[data-units="13"] .beat { animation-name: flash-short-13; }
+.lamp-code[data-units="13"] .beat.is-long { animation-name: flash-long-13; }
+
+.map-witness {
+  position: absolute;
+  z-index: 2;
+  top: 16px;
+  right: 58px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 11px 5px 12px;
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--paper-ink);
+  box-shadow: 0 6px 16px #06080999;
+  font-size: 13px;
+  font-weight: 650;
+  animation: slip-in .55s cubic-bezier(.2, .9, .3, 1.15) both;
+}
+.witness-label { color: var(--paper-muted); font-weight: 600; }
+.map-north {
+  position: absolute;
+  z-index: 1;
+  top: 15px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #c5cbc5;
+  font-size: 11px;
+  line-height: 1;
+}
+.map-north i { width: 12px; height: 22px; background: #bbc4bd; clip-path: polygon(50% 0, 100% 100%, 50% 74%, 0 100%); }
+.map-legend {
+  position: absolute;
+  z-index: 1;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  gap: 15px;
+  padding: 5px 11px;
+  border-radius: 5px;
+  background: #0f1315c7;
+  color: var(--muted);
+  font-size: 12px;
+}
+.map-legend li { display: flex; align-items: center; gap: 6px; }
+.map-legend li::before { content: ""; flex: none; }
+.legend-site::before { width: 8px; height: 8px; border: 1px solid var(--amber); border-radius: 2px; }
+.legend-route::before { width: 16px; border-top: 2px dashed #c9a45c; }
+.legend-river::before { width: 16px; height: 6px; border-radius: 2px; background: #2c5661; }
+
+.dispatch-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 68px;
+  padding: 10px 14px 10px 22px;
+  border-top: 1px solid var(--line);
+}
+.dispatch-actions { display: flex; align-items: center; gap: 10px; }
+.map-feedback { color: var(--muted); font-size: 14px; }
+.button-primary, .button-quiet, .replay-button, .next-case-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 7px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel-raised);
+  font-weight: 650;
+  font-size: 15px;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.button-primary { color: var(--amber-ink); background: var(--amber); border-color: var(--amber); }
+.button-primary:not(:disabled):hover { background: var(--amber-bright); }
+.button-primary:not(:disabled):active, .button-quiet:active { transform: translateY(1px); }
+.button-quiet:hover { border-color: var(--amber); }
+.button-primary:disabled { color: #848b89; background: #262b2e; border-color: #3d4649; }
+.button-dispatch { padding-inline: 22px 18px; }
+.button-dispatch svg { width: 19px; height: 19px; }
+.button-dispatch:not(:disabled) { box-shadow: 0 0 0 4px #ffc46322, 0 6px 22px #ffc46330; }
+
+/* ---------- 电台：上面收听，下面呼叫 ---------- */
+.radio-panel { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; transition: opacity .5s; }
+.rx { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; scroll-margin-top: 72px; }
+.rx-head { display: flex; align-items: center; gap: 16px; padding: 14px 18px 11px; }
+.rx-head h2, .evidence-heading h2 { font-size: 15px; font-weight: 650; letter-spacing: .12em; white-space: nowrap; }
+.dial { position: relative; flex: 1; height: 16px; }
+.dial::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(90deg, #6d787b 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(90deg, #4a5356 0 1px, transparent 1px 8px) center / 100% 8px no-repeat;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  mask: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  opacity: .8;
+}
+.dial-needle {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: 17%;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--amber);
+  box-shadow: 0 0 9px var(--amber);
+  transition: left .5s cubic-bezier(.3, 1.35, .5, 1);
+}
+.radio-panel:has([data-channel="archive"][aria-pressed="true"]) .dial-needle { left: 50%; }
+.radio-panel:has([data-channel="electric"][aria-pressed="true"]) .dial-needle { left: 83%; }
+.radio-state { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.radio-state i { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 10px #ffc46375; }
+html[data-busy="true"] .radio-state i { animation: blink .7s steps(2, jump-none) infinite; }
+html[data-calls="0"] .radio-state i, html[data-phase="outcome"] .radio-state i { background: #5d686b; box-shadow: none; }
+
+.rx-screen {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 176px;
+  margin: 0 14px 14px;
+  border: 1px solid #2a3134;
+  border-radius: 9px;
+  background:
+    radial-gradient(ellipse 120% 90% at 0% 0%, #2a281f66, transparent 70%),
+    linear-gradient(180deg, #15191b, #111416);
+  box-shadow: inset 0 2px 12px #05070790;
+  overflow: hidden;
+}
+.transmission { flex: 1; padding: 16px 18px 6px; }
+.transmission-head { display: flex; align-items: center; gap: 11px; margin-bottom: 10px; }
+.transmission-speaker { color: var(--amber); font-weight: 650; font-size: 15px; letter-spacing: .06em; }
+.transmission-clock { margin-left: auto; color: var(--muted); font: 13px var(--mono); font-variant-numeric: tabular-nums; }
+.transmission-question { display: flex; gap: 8px; margin-bottom: 6px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.transmission-asked {
+  flex: none;
+  align-self: flex-start;
+  margin-top: 1px;
+  padding: 0 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  font-size: 12px;
+}
+.transmission-message { font-size: 19px; line-height: 1.72; }
+.transmission-notes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.transmission-note {
+  padding: 1px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.transmission-note.is-gain { border-color: var(--paper); background: var(--paper); color: var(--paper-ink); }
+.transmission.is-fresh:not(.is-settled) .glyph {
+  opacity: 0;
+  animation: appear 70ms linear forwards;
+  animation-delay: calc(var(--reveal-delay, 0ms) + var(--i) * 24ms);
+}
+.transmission.is-fresh:not(.is-settled) .transmission-notes {
+  animation: rise-in .45s ease-out both;
+  animation-delay: calc(var(--reveal-delay, 0ms) + 700ms);
+}
+/* 示波器：有人说话时起伏，等模型回话时是一条平稳的载波。 */
+.scope-row { display: flex; align-items: center; gap: 14px; height: 68px; padding: 0 18px 10px; }
+.scope { flex: 1 1 0; width: 0; min-width: 0; height: 100%; }
+.scope-label { display: none; color: var(--amber); font-size: 13px; font-weight: 600; letter-spacing: .08em; white-space: nowrap; }
+html[data-busy="true"] .scope-label { display: block; animation: blink 1.2s steps(2, jump-none) infinite; }
+.transmission { transition: opacity .25s; }
+html[data-busy="true"] .transmission { opacity: .35; }
+
+.history { margin: -4px 14px 12px; }
+.history summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding-inline: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  list-style: none;
+}
+.history summary::-webkit-details-marker { display: none; }
+.history summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform .2s;
+}
+.history[open] summary::before { transform: rotate(45deg); }
+.history summary:hover { color: var(--ink); }
+.history ol { display: grid; gap: 10px; max-height: 13rem; margin: 4px 0 4px; padding: 10px 12px; border-radius: 8px; background: var(--panel-deep); overflow: auto; font-size: 13px; }
+.history-speaker { color: var(--muted); font: 12px var(--mono); }
+.history-question { color: var(--amber); }
+.history-question::before { content: "问 "; opacity: .7; }
+.history-message { color: #d6d3c8; }
+
+.tx { display: grid; gap: 14px; padding: 14px 16px 16px; scroll-margin-top: 72px; }
+.tx-step { min-width: 0; }
+.tx-spent {
+  display: none;
+  padding: 9px 12px;
+  border: 1px solid #855748;
+  border-radius: 8px;
+  background: #2b2220;
+  color: var(--warning);
+  font-size: 14px;
+  line-height: 1.5;
+}
+html[data-calls="0"][data-phase="play"] .tx-spent { display: block; }
+.step-label { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; color: var(--muted); font-size: 13px; font-weight: 600; letter-spacing: .06em; }
+.step-label b {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #8a7040;
+  border-radius: 50%;
+  color: var(--amber);
+  font: 600 11px/1 var(--mono);
+}
+.step-label small { margin-left: auto; font-size: 12px; font-weight: 400; letter-spacing: 0; opacity: .8; }
+.channels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.channels button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 7px 11px;
+  border: 1px solid #454e51;
+  border-radius: 9px;
+  background: #24292c;
+  text-align: left;
+  transition: background .15s, border-color .15s;
+}
+.channel-text { display: grid; gap: 1px; min-width: 0; }
+.channel-name { font-size: 15px; font-weight: 650; white-space: nowrap; }
+.channel-note { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.channels button:not(:disabled):hover { border-color: var(--line-strong); background: #2c3235; }
+.channels button[aria-pressed="true"] { border-color: var(--amber); background: var(--amber-surface); }
+.channels button[aria-pressed="true"] .channel-name { color: var(--amber); }
+/* 头像只在发问区够宽时出现，窄了让位给名字。 */
+.tx { container: tx / inline-size; }
+.channels .face { display: none; width: 32px; height: 32px; color: #b9b6aa; border-color: #4f585b; }
+.channels button[aria-pressed="true"] .face { color: var(--amber); border-color: #6f5c37; }
+@container tx (min-width: 452px) { .channels .face { display: block; } .channels button { padding-inline: 9px; } }
+.channels button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber);
+}
+.channels button:disabled { opacity: .55; }
+.channels button.is-suggested { animation: beckon .65s ease-in-out 4 alternate; }
+
+.quote-dock { display: grid; min-height: 52px; }
+.quote-empty {
+  display: block;
+  align-content: center;
+  min-height: 52px;
+  padding: 7px 13px;
+  border: 1px dashed #4b5558;
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.quote-empty.is-nudged { animation: beckon .8s ease-in-out 4 alternate; }
+.active-quote:not([hidden]) + .quote-empty { display: none; }
+.active-quote { display: grid; gap: 5px; scroll-margin-top: 96px; }
+.active-quote.is-landing .quote-chip { animation: land .6s cubic-bezier(.2, .9, .3, 1.2); }
+.quote-chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 5px 6px 5px 14px;
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--paper-ink);
+  box-shadow: 0 6px 16px #06080999;
+}
+.quote-text { display: grid; gap: 0; min-width: 0; font-size: 13px; line-height: 1.4; }
+.quote-text b { font-size: 14px; }
+.quote-text span { color: var(--paper-muted); overflow-wrap: anywhere; }
+.remove-quote {
+  min-width: 52px;
+  min-height: 40px;
+  padding: 4px 10px;
+  border: 1.5px solid #1d1a1570;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--paper-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+.remove-quote:not(:disabled):hover { border-color: var(--paper-ink); }
+.remove-quote:disabled { opacity: .45; }
+.quote-note { color: var(--amber); font-size: 12px; }
+
+.radio-feedback {
+  display: flex;
+  gap: 9px;
+  padding: 9px 12px;
+  margin-bottom: 9px;
+  border: 1px solid #7c6238;
+  border-radius: 8px;
+  background: var(--amber-surface);
+  color: var(--amber-bright);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.radio-feedback::before {
+  content: "!";
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--amber-ink);
+  font: 700 12px/1 var(--mono);
+}
+.radio-feedback.is-shaking { animation: shake .4s ease-in-out; }
+.free-call { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-bottom: 11px; }
+.free-call input {
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel-deep);
+  color: var(--ink);
+  font: inherit;
+}
+.free-call input::placeholder { color: #8e9391; }
+.free-call input:focus-visible { border-color: var(--amber); outline-offset: 0; }
+.free-call input:disabled { color: var(--muted); opacity: .6; }
+.free-call .button-primary { position: relative; min-height: 48px; min-width: 76px; }
+.free-call[aria-busy="true"] .button-primary { color: transparent; }
+.free-call[aria-busy="true"] .button-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 30px;
+  height: 6px;
+  background: radial-gradient(circle, var(--amber-ink) 2.6px, transparent 3px) 0 0 / 12px 6px repeat-x;
+  animation: blink .7s steps(2, jump-none) infinite;
+}
+.free-call-notice { margin-bottom: 9px; color: var(--muted); font-size: 13px; }
+.prompts-label { margin-bottom: 7px; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; }
+.free-call[hidden] ~ .prompts-label, .tx-step:has(.presets:empty) .prompts-label { display: none; }
+.presets { display: grid; gap: 7px; }
+.preset-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  min-height: 46px;
+  padding: 8px 12px 8px 14px;
+  border: 1px solid #454e51;
+  border-radius: 9px;
+  background: #24292c;
+  color: var(--ink);
+  font-size: 15px;
+  text-align: left;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.preset-button::after {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-right: 3px;
+  border-top: 1.5px solid var(--amber);
+  border-right: 1.5px solid var(--amber);
+  transform: rotate(45deg);
+  transition: translate .15s;
+}
+.preset-button:not(:disabled):hover { border-color: var(--amber); background: #2e2d27; }
+.preset-button:not(:disabled):hover::after { translate: 3px 0; }
+.preset-button:not(:disabled):active { transform: translateY(1px); }
+.preset-button:disabled { color: #878d8b; border-color: #363d40; background: #1f2326; }
+.preset-button:disabled::after { border-color: #5d686b; }
+
+/* ---------- 证据板：纸质工单 ---------- */
+.evidence-panel { padding: 12px 14px 14px; }
+.evidence-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 4px 10px; }
+.evidence-count { color: var(--muted); font: 13px var(--mono); font-variant-numeric: tabular-nums; }
+.evidence-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.evidence-empty, .evidence-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 98px;
+  padding: 8px 12px;
+  border: 1px dashed #414a4d;
+  border-radius: 6px;
+  color: #7f8684;
+  font-size: 13px;
+  letter-spacing: .08em;
+}
+.evidence-empty { color: var(--muted); letter-spacing: 0; }
+.evidence-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "meta meta" "text quote";
+  align-items: end;
+  gap: 6px 12px;
+  min-width: 0;
+  min-height: 98px;
+  padding: 11px 12px 11px 24px;
+  border-radius: 4px;
+  background: linear-gradient(175deg, #ece3cf, var(--paper) 55%, var(--paper-shade));
+  color: var(--paper-ink);
+  box-shadow: 0 8px 18px #06080999;
+  transition: transform .2s, box-shadow .2s;
+}
+.evidence-card::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  left: 11px;
+  border-left: 1.5px dashed #1d1a1547;
+}
+.evidence-card.is-new { animation: slip-in .6s cubic-bezier(.2, .9, .3, 1.15) both; }
+.evidence-card:has(.quote-button[aria-pressed="true"]) { transform: translateY(-3px); box-shadow: 0 0 0 2px var(--amber), 0 12px 22px #060809b0; }
+.evidence-meta { grid-area: meta; display: flex; align-items: center; gap: 9px; min-width: 0; align-self: start; }
+.evidence-name { font: 900 17px/1.2 var(--display); letter-spacing: .06em; white-space: nowrap; }
+.evidence-source { color: var(--paper-muted); font-size: 12px; white-space: nowrap; }
+.evidence-meta .lamp-code { margin-left: auto; }
+.evidence-text { grid-area: text; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.quote-button {
+  grid-area: quote;
+  min-width: 60px;
+  min-height: 38px;
+  padding: 4px 13px;
+  border: 1.5px solid var(--paper-ink);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--paper-ink);
+  font-size: 14px;
+  font-weight: 650;
+  transition: background .15s, color .15s;
+}
+.quote-button:not(:disabled):hover, .quote-button[aria-pressed="true"] { background: var(--paper-ink); color: var(--paper); }
+.quote-button:disabled { opacity: .4; }
+.quote-button.is-wanted { animation: wanted .65s ease-in-out 4 alternate; }
+.evidence-card button:focus-visible, .quote-chip button:focus-visible, .outcome button:focus-visible, #dispatch-dialog button:focus-visible { outline-color: var(--paper-ink); outline-offset: 2px; }
+.quote-ghost {
+  position: fixed;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--paper-ink);
+  box-shadow: 0 14px 30px #060809b0;
+  font: 900 17px var(--display);
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+/* ---------- 结案：盖在电台上的一张纸 ---------- */
+.outcome {
+  z-index: 3;
+  align-self: start;
+  margin: 12px 12px 0;
+  padding: 26px 28px 26px;
+  border-radius: 5px;
+  background: linear-gradient(176deg, #eee5d1, var(--paper) 50%, var(--paper-shade));
+  color: var(--paper-ink);
+  box-shadow: 0 22px 60px #040506c7;
+  transition: opacity .55s ease, transform .6s cubic-bezier(.2, .8, .2, 1);
+  scroll-margin-top: 72px;
+}
+/* 派车时立刻藏住，不走淡出过渡：结果卡在确认那一刻已写进页面，淡出会先把结论亮给玩家看半秒。 */
+html[data-phase="dispatching"] .outcome { opacity: 0; transform: translateY(18px) rotate(-.6deg); transition: none; }
+html[data-phase="dispatching"] .radio-panel { opacity: .5; }
+html[data-phase="outcome"] .radio-panel { opacity: .22; pointer-events: none; }
+.outcome-eyebrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; color: var(--paper-muted); font-size: 13px; font-weight: 600; letter-spacing: .08em; }
+.outcome-stamp {
+  flex: none;
+  padding: 2px 10px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  color: #b0482f;
+  font: 900 15px/1.4 var(--display);
+  letter-spacing: .14em;
+  transform: rotate(-3deg);
+}
+.outcome.is-success .outcome-stamp { color: #3c6648; }
+.outcome-title { margin-bottom: 8px; font: 900 clamp(26px, 2.4vw, 34px)/1.2 var(--display); letter-spacing: .04em; }
+.outcome-title:focus { outline: none; }
+.outcome-copy { color: #3a352b; font-size: 15px; }
+.outcome-evidence { display: grid; gap: 0; margin: 16px 0 14px; border-top: 1.5px solid var(--paper-ink); }
+.outcome-evidence li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1d1a1533; font-size: 14px; line-height: 1.55; }
+.proof-tag { padding: 0 7px; border: 1px solid currentColor; border-radius: 3px; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.is-held .proof-tag { color: #3c6648; }
+.is-missed .proof-tag { color: #8c5a3c; border-style: dashed; }
+.outcome-stats { display: flex; gap: 18px; margin-bottom: 18px; color: var(--paper-muted); font: 13px var(--mono); font-variant-numeric: tabular-nums; }
+.outcome-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.next-case-button { min-width: 148px; border-color: var(--paper-ink); background: var(--paper-ink); color: var(--amber); }
+.next-case-button:hover { background: #2e2a22; }
+.replay-button { border-color: #1d1a1580; background: transparent; color: var(--paper-ink); }
+.replay-button:hover { border-color: var(--paper-ink); }
+
+/* 派车途中：只留目的地，其余地点一律暗下去，不提前透露结果。 */
+html[data-phase="dispatching"] .map-point:not(.is-dispatched) { opacity: .28; }
+html[data-phase="dispatching"] .point-status,
+html[data-phase="dispatching"] .point-facts { visibility: hidden; }
+html[data-phase="dispatching"] .map-point .point-icon::before { display: none; }
+html[data-phase="dispatching"] .map-point .point-label { text-decoration: none; }
+html[data-phase="dispatching"] .map-point.is-dispatched .point-icon { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
+html[data-phase="dispatching"] .map-witness, html[data-phase="dispatching"] .map-legend { opacity: 0; }
+html[data-phase="outcome"] .map-point.is-correct .point-icon { background: var(--success); color: #1f281d; border-color: var(--success); box-shadow: 0 0 0 5px #bdc6a02e, 0 4px 16px #080a0bb8; }
+html[data-phase="outcome"] .map-point.is-correct .point-label { border-color: var(--success); color: var(--ink); text-decoration: none; }
+html[data-phase="outcome"] .map-point.is-correct .point-status { color: var(--success); }
+html[data-phase="outcome"] .map-point.is-dispatched:not(.is-correct) .point-icon { background: #2b2220; color: var(--warning); border-color: var(--warning); }
+html[data-phase="outcome"] .map-point.is-dispatched:not(.is-correct) .point-label { border-color: var(--warning); }
+html[data-phase="outcome"] .map-point.is-dispatched:not(.is-correct) .point-status { color: var(--warning); }
+html[data-phase="dispatching"] .dispatch-actions, html[data-phase="outcome"] .dispatch-actions { display: none; }
+
+/* ---------- 派车单 ---------- */
+#dispatch-dialog {
+  width: min(calc(100% - 32px), 440px);
+  padding: 26px 28px 24px;
+  border: 0;
+  border-radius: 5px;
+  background: linear-gradient(176deg, #eee5d1, var(--paper) 50%, var(--paper-shade));
+  color: var(--paper-ink);
+  box-shadow: 0 26px 80px #030405d9;
+}
+#dispatch-dialog[open] { animation: slip-in .4s cubic-bezier(.2, .9, .3, 1.1); }
+#dispatch-dialog::backdrop { background: #0a0c0dc7; }
+.dialog-eyebrow { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1.5px solid var(--paper-ink); color: var(--paper-muted); font-size: 13px; font-weight: 600; letter-spacing: .12em; }
+#dispatch-dialog h2 { margin-bottom: 8px; font: 900 28px/1.25 var(--display); letter-spacing: .04em; }
+#dispatch-dialog-copy { color: #3a352b; }
+.dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+#dispatch-dialog .button-quiet { border-color: #1d1a1580; background: transparent; color: var(--paper-ink); }
+#dispatch-dialog .button-quiet:hover { border-color: var(--paper-ink); }
+#dispatch-dialog .button-primary { border-color: var(--paper-ink); background: var(--paper-ink); color: var(--amber); }
+#dispatch-dialog .button-primary:hover { background: #2e2a22; }
+
+/* ---------- 开场来电 ---------- */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse 46rem 30rem at 50% 44%, #ff4f3f1c, transparent 70%),
+    radial-gradient(ellipse at 50% 30%, #1d2225 0%, #0d0f10 72%);
+  overflow: auto;
+  transition: opacity .7s ease;
+}
+html[data-intro="leaving"] .intro { opacity: 0; pointer-events: none; }
+.intro-rain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.intro-card { position: relative; display: grid; justify-items: center; width: min(100%, 560px); text-align: center; animation: rise-in .9s cubic-bezier(.2, .8, .2, 1) both; }
+.intro-eyebrow { color: var(--amber); font-size: 14px; font-weight: 600; letter-spacing: .3em; text-indent: .3em; }
+#intro-title { margin: 18px 0 22px; font: 900 clamp(58px, 15vw, 116px)/1 var(--display); letter-spacing: .1em; text-indent: .1em; text-shadow: 0 8px 40px #000; }
+.intro-brief { color: #d8d5ca; font-size: 17px; line-height: 1.8; }
+.intro-rules { display: flex; justify-content: center; gap: clamp(22px, 7vw, 54px); margin: 30px 0 34px; }
+.intro-rules li { display: grid; gap: 6px; justify-items: center; color: var(--muted); font-size: 14px; }
+.intro-rules b { color: var(--ink); font: 700 44px/1 var(--mono); }
+.answer-button {
+  position: relative;
+  min-width: 232px;
+  min-height: 62px;
+  padding: 10px 34px;
+  border: 0;
+  border-radius: 31px;
+  background: var(--amber);
+  color: var(--amber-ink);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-indent: .16em;
+  transition: background .15s, transform .1s;
+}
+.answer-button:hover { background: var(--amber-bright); }
+.answer-button:active { transform: scale(.98); }
+.answer-ring, .answer-ring::after {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--amber);
+  border-radius: inherit;
+  animation: ring 1.8s ease-out infinite;
+  pointer-events: none;
+}
+.answer-ring::after { content: ""; animation-delay: .6s; }
+.intro-foot { margin-top: 22px; color: #8d9391; font-size: 13px; letter-spacing: .08em; }
+html[data-intro="leaving"] .masthead,
+html[data-intro="leaving"] .desk-grid > * { animation: rise-in .7s cubic-bezier(.2, .8, .2, 1) both; }
+html[data-intro="leaving"] .map-panel { animation-delay: .08s; }
+html[data-intro="leaving"] .radio-panel { animation-delay: .18s; }
+html[data-intro="leaving"] .evidence-panel { animation-delay: .28s; }
+
+/* ---------- 动效 ---------- */
+@keyframes appear { to { opacity: 1; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(12px); } }
+@keyframes slip-in { from { opacity: 0; transform: translateY(-16px) rotate(-1.6deg); } }
+@keyframes land { 0% { transform: scale(.94); box-shadow: 0 0 0 0 var(--amber); } 45% { transform: scale(1.02); box-shadow: 0 0 0 5px #ffc46370; } 100% { transform: none; } }
+@keyframes tick { 0% { transform: translateY(-9px) scale(1.25); opacity: .2; } 100% { transform: none; opacity: 1; } }
+@keyframes burn-out { 0% { background: #fff3d8; box-shadow: 0 0 14px #ffda94; } 100% { background: #3a4144; box-shadow: none; } }
+@keyframes turn { to { transform: rotate(360deg); } }
+@keyframes blink { 50% { opacity: .25; } }
+@keyframes beckon { from { border-color: #4b5558; box-shadow: 0 0 0 0 #ffc46300; } to { border-color: var(--amber); box-shadow: 0 0 0 4px #ffc46338; } }
+@keyframes wanted { from { box-shadow: 0 0 0 0 #1d1a1500; } to { box-shadow: 0 0 0 5px #b4281b66; } }
+@keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+@keyframes ring { from { transform: scale(1); opacity: .7; } to { transform: scale(1.22, 1.6); opacity: 0; } }
+@keyframes flash-short-11 { 0% { opacity: 1; box-shadow: 0 0 9px 2px #ff4f3fb0; } 9.09%, 100% { opacity: var(--rest); box-shadow: none; } }
+@keyframes flash-long-11 { 0% { opacity: 1; box-shadow: 0 0 9px 2px #ff4f3fb0; } 27.27%, 100% { opacity: var(--rest); box-shadow: none; } }
+@keyframes flash-short-13 { 0% { opacity: 1; box-shadow: 0 0 9px 2px #ff4f3fb0; } 7.69%, 100% { opacity: var(--rest); box-shadow: none; } }
+@keyframes flash-long-13 { 0% { opacity: 1; box-shadow: 0 0 9px 2px #ff4f3fb0; } 23.08%, 100% { opacity: var(--rest); box-shadow: none; } }
+
+/* ---------- 第二轮：人、路线、那盏灯 ---------- */
+/* 三位联系人的头像。线稿当蒙版，颜色跟着文字色走。 */
+.face {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #6f5c37;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 28%, #322d21, #181b1d 76%);
+  color: var(--amber);
+}
+.face::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: currentColor;
+  -webkit-mask: var(--face) center / contain no-repeat;
+  mask: var(--face) center / contain no-repeat;
+}
+.face[data-face="caller"] { --face: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11.500 30.500c-1.600-10.500 1-20 8.500-20s10.100 9.500 8.500 20'/%3E%3Cellipse cx='20' cy='22' rx='4.700' ry='5.600'/%3E%3Cpath d='M6.500 36.500c1.200-3.600 3.300-5.600 6.500-6M27 30.500c3.200.400 5.300 2.400 6.500 6'/%3E%3Cpath d='M6.500 8l-1.300 3.800M12 4.500l-1.300 3.800M30 5l-1.300 3.800M35.500 10l-1.300 3.800'/%3E%3C/svg%3E"); }
+.face[data-face="archive"] { --face: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 15.500c.600-5.400 13.400-5.400 14 0'/%3E%3Cpath d='M11.500 15.500h18.500'/%3E%3Cpath d='M14.500 15.500v4a5.500 5.500 0 0 0 11 0v-4'/%3E%3Cpath d='M8 36.500c1-5.200 5-8.700 12-8.700s11 3.500 12 8.700'/%3E%3Cpath d='M15.500 33.200h.01M19 33.200h.01M22.500 33.200h3.500'/%3E%3C/svg%3E"); }
+.face[data-face="electric"] { --face: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.500 17.500c0-5 3.300-8.200 7.500-8.200s7.500 3.200 7.500 8.200'/%3E%3Cpath d='M10.500 17.500h19M20 9.300v3.200'/%3E%3Cpath d='M14.500 17.500v3a5.500 5.500 0 0 0 11 0v-3'/%3E%3Cpath d='M8 36.500c1-5.200 5-8.700 12-8.700s11 3.500 12 8.700'/%3E%3Cpath d='M21.500 30l-2.900 3.300h3.200l-2.500 3.200'/%3E%3C/svg%3E"); }
+
+/* 剧情时间：每打一通电话走半分钟。 */
+[data-story-clock] { display: inline-block; font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+[data-story-clock].is-ticking { animation: tick .55s cubic-bezier(.2, .8, .3, 1); }
+
+/* 救援车在南端待命，派出后离开。 */
+.map-depot {
+  position: absolute;
+  z-index: 1;
+  left: 24.4%;
+  top: 94%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transform: translate(calc(-100% + 14px), -50%);
+  color: var(--amber-bright);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity .4s;
+}
+.map-depot span { padding: 1px 7px; border-radius: 4px; background: #10151ad9; color: var(--muted); }
+.map-depot svg { width: 28px; height: 28px; padding: 5px; border: 1px solid #9b8351; border-radius: 50%; background: #12171af2; box-shadow: 0 0 0 0 #ffc46355; animation: idle 2.6s ease-out infinite; }
+html[data-phase="dispatching"] .map-depot, html[data-phase="outcome"] .map-depot { opacity: 0; }
+
+/* 结算：真正的那盏红灯亮在门檐下，按求救者看到的节奏闪。 */
+html[data-phase="outcome"] .map-point[aria-pressed="true"]:not(.is-correct) .point-icon::after { display: none; }
+html[data-phase="outcome"] .map-point.is-correct .point-icon::after {
+  inset: auto;
+  top: -8px;
+  right: -8px;
+  width: 15px;
+  height: 15px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--lamp);
+  box-shadow: 0 0 18px 7px #ff4f3f9c, 0 0 0 2px #1a1010;
+  animation: lamp-ssl 2.86s steps(1, end) infinite;
+}
+html[data-phase="outcome"] .map-point.is-correct[data-lamp="sll"] .point-icon::after { animation: lamp-sll 3.38s steps(1, end) infinite; }
+html[data-phase="outcome"] .map-point.is-correct[data-lamp="lss"] .point-icon::after { animation: lamp-lss 2.86s steps(1, end) infinite; }
+html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] .point-icon::after { animation: lamp-lls 3.38s steps(1, end) infinite; }
+
+/* 证据卡可以直接拖到「带上证词」。 */
+.evidence-card[draggable="true"] { cursor: grab; }
+.evidence-card[draggable="true"]:active { cursor: grabbing; }
+.quote-dock.is-target .quote-empty { border-color: var(--amber); color: var(--ink); }
+.quote-dock.is-over .quote-empty { background: var(--amber-surface); box-shadow: 0 0 0 4px #ffc46330; }
+@media (hover: hover) and (pointer: fine) and (min-width: 761px) {
+  .quote-empty::after { content: "也可以把卡片直接拖到这里。"; }
+}
+
+/* 整屏一层很淡的颗粒，压掉纯色块的「网页感」。 */
+body::after {
+  content: "";
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: .055;
+  pointer-events: none;
+}
+
+@keyframes idle { 0% { box-shadow: 0 0 0 0 #ffc46355; } 70%, 100% { box-shadow: 0 0 0 9px #ffc46300; } }
+@keyframes lamp-ssl { 0% { opacity: 1; } 9.09% { opacity: .12; } 18.18% { opacity: 1; } 27.27% { opacity: .12; } 36.36% { opacity: 1; } 63.64%, 100% { opacity: .12; } }
+@keyframes lamp-sll { 0% { opacity: 1; } 7.69% { opacity: .12; } 15.38% { opacity: 1; } 38.46% { opacity: .12; } 46.15% { opacity: 1; } 69.23%, 100% { opacity: .12; } }
+@keyframes lamp-lss { 0% { opacity: 1; } 27.27% { opacity: .12; } 36.36% { opacity: 1; } 45.45% { opacity: .12; } 54.55% { opacity: 1; } 63.64%, 100% { opacity: .12; } }
+@keyframes lamp-lls { 0% { opacity: 1; } 23.08% { opacity: .12; } 30.77% { opacity: 1; } 53.85% { opacity: .12; } 61.54% { opacity: 1; } 69.23%, 100% { opacity: .12; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .beat, .answer-ring, .map-depot svg, .point-icon::after { animation: none !important; }
+  .answer-ring { display: none; }
+}
+
+/* ---------- 矮屏幕的桌面：收紧纵向间距 ---------- */
+@media (min-width: 761px) and (max-height: 800px) {
+  .masthead { min-height: 58px; }
+  .desk { padding-bottom: 16px; }
+  .desk-grid { grid-template-rows: minmax(360px, 1fr) auto; gap: 12px; }
+  .survey-map { min-height: 280px; }
+  .dispatch-toolbar { min-height: 60px; }
+  .radio-panel { gap: 12px; }
+  .rx-head { padding-block: 11px 9px; }
+  .rx-screen { min-height: 150px; }
+  .scope-row { height: 44px; padding-bottom: 6px; }
+  .transmission-message { font-size: 17px; line-height: 1.65; }
+  .tx { gap: 10px; padding-block: 11px 13px; }
+  .step-label { margin-bottom: 5px; }
+  .channels button { min-height: 50px; }
+  .quote-dock, .quote-empty, .quote-chip { min-height: 46px; }
+  .preset-button { min-height: 42px; }
+  .evidence-panel { padding-block: 10px 12px; }
+  .evidence-empty, .evidence-slot, .evidence-card { min-height: 88px; }
+}
+
+/* ---------- 窄桌面与平板 ---------- */
+@media (max-width: 1070px) {
+  .desk { padding-inline: 18px; }
+  .desk-grid { grid-template-columns: minmax(0, 1.2fr) minmax(330px, 1fr); }
+  .shift { display: none; }
+  .evidence-list { grid-template-columns: minmax(0, 1fr); }
+  .evidence-empty, .evidence-slot { min-height: 44px; }
+  .evidence-slot { display: none; }
+  .evidence-card { min-height: 0; }
+  .map-legend { display: none; }
+  .map-point[data-location="pump"] .point-facts { left: auto; right: 0; }
+}
+
+/* ---------- 手机：地图 → 收听 → 证据 → 呼叫，证据紧挨着发问区 ---------- */
+@media (max-width: 760px) {
+  .desk { display: block; min-height: 0; padding: 0 10px calc(22px + env(safe-area-inset-bottom)); }
+  .masthead {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    min-height: 56px;
+    margin-inline: -10px;
+    padding-inline: 12px;
+    border-bottom: 1px solid var(--line);
+    background: #17191bf0;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  .identity { gap: 9px; }
+  .identity h1 { font-size: 21px; letter-spacing: .08em; }
+  .station-mark { width: 32px; height: 32px; border-radius: 8px; }
+  .station-mark svg { width: 21px; height: 21px; }
+  .masthead-tools { gap: 10px; }
+  .icon-button { width: 38px; height: 38px; }
+  .budget { gap: 9px; }
+  .budget-label { font-size: 12px; letter-spacing: 0; }
+  .budget-number { font-size: 26px; }
+  .budget-total { display: none; }
+  .signal-meter { height: 22px; gap: 3px; }
+  .signal-bar { width: 5px; }
+
+  .desk-grid { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+  .radio-panel { display: contents; }
+  .map-panel { order: 1; }
+  .rx { order: 2; }
+  .evidence-panel { order: 3; }
+  .tx { order: 4; }
+  .outcome { order: 2; margin: 0; padding: 22px 20px; }
+  /* 派车后电台收起，结案单接在地图下面，位置在车开到之前就留好。 */
+  html[data-phase="outcome"] .rx, html[data-phase="outcome"] .tx,
+  html[data-phase="dispatching"] .rx, html[data-phase="dispatching"] .tx { display: none; }
+  .panel { border-radius: 11px; }
+
+  .map-heading { position: static; display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; padding: 11px 14px 9px; }
+  .map-heading::before { display: none; }
+  .map-heading h2 { order: 1; font-size: 23px; text-shadow: none; }
+  .map-area { order: 2; margin: 0; font-size: 11px; letter-spacing: .1em; }
+  .survey-map { flex: none; height: clamp(256px, 66vw, 340px); min-height: 0; }
+  .map-point { --point-size: 40px; gap: 7px; }
+  .point-facts { top: calc(100% + 4px); gap: 4px; }
+  .point-icon { border-radius: 9px; }
+  .point-icon svg { width: 24px; height: 24px; }
+  .point-label { padding-inline: 7px; font-size: 14px; }
+  .fact { height: 22px; padding: 0 7px 0 6px; gap: 5px; }
+  .fact-code .fact-text { display: none; }
+  .fact .beat { width: 5px; height: 5px; }
+  .fact .beat.is-long { width: 13px; }
+  .map-witness { top: 10px; right: 40px; padding: 3px 8px 3px 9px; font-size: 12px; gap: 6px; }
+  .map-depot { font-size: 11px; gap: 4px; transform: translate(calc(-100% + 11px), -50%); }
+  .map-depot svg { width: 22px; height: 22px; padding: 3px; }
+  .transmission-head .face { width: 34px; height: 34px; }
+  .map-north { top: 10px; right: 12px; }
+  .dispatch-toolbar { min-height: 62px; padding: 8px 10px 8px 14px; }
+  .dispatch-actions { gap: 7px; margin-left: auto; }
+  .button-primary, .button-quiet { padding-inline: 13px; }
+  .button-dispatch { padding-inline: 15px 12px; }
+  .map-feedback { font-size: 13px; }
+
+  .rx { scroll-margin-top: 66px; }
+  .rx-head { padding: 11px 14px 9px; }
+  .rx-screen { min-height: 0; margin: 0 10px 10px; }
+  .transmission { padding: 13px 14px 4px; }
+  .transmission-message { font-size: 17px; line-height: 1.68; }
+  .scope-row { height: 34px; padding: 0 14px 6px; gap: 10px; }
+  .history { margin: -2px 10px 9px; }
+
+  .evidence-panel { padding: 10px 10px 11px; }
+  .evidence-heading { padding-bottom: 8px; }
+  .evidence-list { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .evidence-heading:has(+ .evidence-list > .evidence-empty) { padding-bottom: 2px; }
+  .evidence-empty { min-height: 0; justify-content: flex-start; padding: 0 4px; border: 0; }
+  .evidence-slot { display: none; }
+  .evidence-card { grid-template-areas: "meta quote" "text quote"; align-items: center; min-height: 0; gap: 3px 10px; padding: 9px 9px 10px 22px; }
+  .evidence-name { font-size: 16px; }
+  .quote-button { min-height: 44px; }
+
+  .tx { gap: 13px; padding: 12px 12px 14px; }
+  .channels { gap: 6px; }
+  .channels button { min-height: 56px; padding-inline: 9px; }
+  .remove-quote { min-height: 44px; }
+  .preset-button { min-height: 48px; }
+  .free-call input, .free-call .button-primary { min-height: 50px; }
+  #intro-title { margin-block: 14px 18px; }
+  .intro-brief { font-size: 16px; }
+  .intro-rules { margin-block: 24px 28px; }
+  .intro-rules b { font-size: 38px; }
+}
+@media (max-width: 380px) {
+  .identity h1 { font-size: 19px; }
+  .station-mark { display: none; }
+  .channels button { padding-inline: 7px; }
+  .channel-name { font-size: 13.5px; }
+  .channel-note { font-size: 11px; }
+  .map-point { --point-size: 36px; gap: 5px; }
+  .point-label { padding-inline: 5px; font-size: 13px; }
+  .fact { padding: 0 6px 0 5px; font-size: 11px; }
+  .map-area { display: none; }
+  .map-depot span { display: none; }
+  .intro-brief br { display: none; }
+}
+  </style>
+</head>
+<body>
+  <div class="desk" id="desk">
+    <header class="masthead">
+      <div class="identity">
+        <div class="station-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8.2 8.2a5.4 5.4 0 000 7.6M15.8 8.2a5.4 5.4 0 010 7.6M5.3 5.3a9.5 9.5 0 000 13.4M18.7 5.3a9.5 9.5 0 010 13.4"/><circle class="station-lamp" cx="12" cy="12" r="2.2" stroke="none"/></svg>
+        </div>
+        <h1>末班电台</h1>
+        <p class="shift">夜班调度台<span data-case-number hidden></span></p>
+      </div>
+      <div class="masthead-tools">
+        <button id="sound-toggle" type="button" class="icon-button" aria-pressed="true" aria-label="声音" title="声音">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.6v4.8h3.4L12 18V6L7.4 9.6H4z"/><path class="sound-on" d="M15.4 9.2a4 4 0 010 5.6M18 6.8a7.4 7.4 0 010 10.4"/><path class="sound-off" d="M16 9.6l4.8 4.8M20.8 9.6L16 14.4"/></svg>
+        </button>
+        <div class="budget">
+          <div class="budget-reading">
+            <span class="budget-label">剩余通话</span>
+            <strong id="call-count" class="budget-number" aria-live="polite">5</strong>
+            <span class="budget-total">/ 5</span>
+          </div>
+          <div id="signal-meter" class="signal-meter" aria-hidden="true">
+            <span class="signal-bar"></span><span class="signal-bar"></span><span class="signal-bar"></span><span class="signal-bar"></span><span class="signal-bar"></span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="desk-grid" tabindex="-1">
+      <section class="panel map-panel" aria-labelledby="case-title">
+        <header class="map-heading">
+          <p class="map-area">河堤巡检线 · <span data-story-clock>22:16:00</span> · 暴雨</p>
+          <h2 id="case-title">雨夜<em>红灯</em></h2>
+        </header>
+        <div class="survey-map" id="survey-map">
+          <canvas id="survey-canvas" aria-hidden="true"></canvas>
+          <div id="map-points" class="map-points" role="group" aria-label="派车候选地点">
+            <button type="button" class="map-point" data-location="gate" aria-pressed="false" aria-describedby="facts-gate">
+              <span class="point-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5V5.5h16v15"/><path d="M8 20.5V11h8v9.5"/><path d="M8 14.2h8M8 17.4h8"/><path d="M12 11V5.5M10 3h4"/></svg></span>
+              <span class="point-tag"><span class="point-label">北闸</span><span class="point-status" data-point-status hidden></span></span>
+              <span class="point-facts" id="facts-gate" data-point-facts></span>
+            </button>
+            <button type="button" class="map-point" data-location="pump" aria-pressed="false" aria-describedby="facts-pump">
+              <span class="point-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="14" r="5"/><circle cx="10" cy="14" r="1.3"/><path d="M10 9V5h8M18 3v4"/><path d="M15 14h6M21 12v4"/><path d="M4 21.2h12"/></svg></span>
+              <span class="point-tag"><span class="point-label">排水泵站</span><span class="point-status" data-point-status hidden></span></span>
+              <span class="point-facts" id="facts-pump" data-point-facts></span>
+            </button>
+            <button type="button" class="map-point" data-location="warehouse" aria-pressed="false" aria-describedby="facts-warehouse">
+              <span class="point-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.2l9-6.2 9 6.2"/><path d="M5.5 10v10.5h13V10"/><path d="M10 20.5V15h4v5.5"/></svg></span>
+              <span class="point-tag"><span class="point-label">旧货栈</span><span class="point-status" data-point-status hidden></span></span>
+              <span class="point-facts" id="facts-warehouse" data-point-facts></span>
+            </button>
+          </div>
+          <div class="map-depot" aria-hidden="true"><span>救援车待命</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 16V7.5h11V16M13.500 10.500h4l3.500 3.500v2h-2"/><circle cx="7" cy="16.500" r="2"/><circle cx="16.500" cy="16.500" r="2"/><path d="M9 16.500h5.500"/></svg></div>
+          <p class="map-witness" data-map-witness hidden></p>
+          <div class="map-north" aria-label="方位朝北"><i aria-hidden="true"></i><span>北</span></div>
+          <ul class="map-legend" aria-hidden="true">
+            <li class="legend-site">候选站房</li>
+            <li class="legend-route">巡检线</li>
+            <li class="legend-river">河道</li>
+          </ul>
+        </div>
+        <div class="dispatch-toolbar">
+          <p id="map-feedback" class="map-feedback" aria-live="polite">选择派车地点</p>
+          <div class="dispatch-actions">
+            <button id="exclude-button" type="button" class="button-quiet" hidden><span data-button-label>标记排除</span></button>
+            <button id="dispatch-button" type="button" class="button-primary button-dispatch" disabled>
+              <span data-button-label>派车</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12h14M13 6.5l5.5 5.5-5.5 5.5"/></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="radio-panel" aria-labelledby="radio-title">
+        <div class="panel rx">
+          <header class="rx-head">
+            <h2 id="radio-title">通信</h2>
+            <div class="dial" aria-hidden="true"><span class="dial-needle"></span></div>
+            <span class="radio-state"><i aria-hidden="true"></i><span id="radio-status">接报</span></span>
+          </header>
+          <div class="rx-screen">
+            <div id="current-transmission" class="transmission" aria-live="polite" aria-atomic="true"></div>
+            <div class="scope-row" aria-hidden="true"><span class="scope-label">呼叫中 · 等对方回话</span><canvas class="scope"></canvas></div>
+          </div>
+          <details id="call-history" class="history" hidden>
+            <summary>通话记录</summary>
+            <ol id="call-history-list"></ol>
+          </details>
+        </div>
+
+        <div class="panel tx">
+          <p class="tx-spent">通话已用完。对照地图和证据板，选一个地点派车。</p>
+          <div class="tx-step">
+            <p class="step-label"><b aria-hidden="true">1</b>呼叫谁</p>
+            <div id="radio-channels" class="channels" role="group" aria-label="通信频道">
+              <button type="button" data-channel="caller" aria-pressed="true" aria-label="求救者" aria-describedby="channel-note-caller"><span class="face" data-face="caller" aria-hidden="true"></span><span class="channel-text"><span class="channel-name">求救者</span><span class="channel-note" id="channel-note-caller">人在现场</span></span></button>
+              <button type="button" data-channel="archive" aria-pressed="false" aria-label="灯号值守员" aria-describedby="channel-note-archive"><span class="face" data-face="archive" aria-hidden="true"></span><span class="channel-text"><span class="channel-name">灯号值守员</span><span class="channel-note" id="channel-note-archive">管灯号档案</span></span></button>
+              <button type="button" data-channel="electric" aria-pressed="false" aria-label="维修电工" aria-describedby="channel-note-electric"><span class="face" data-face="electric" aria-hidden="true"></span><span class="channel-text"><span class="channel-name">维修电工</span><span class="channel-note" id="channel-note-electric">管今晚维修单</span></span></button>
+            </div>
+          </div>
+          <div class="tx-step">
+            <p class="step-label"><b aria-hidden="true">2</b>带上证词<small>可不带</small></p>
+            <div class="quote-dock">
+              <div id="active-quote" class="active-quote" hidden></div>
+              <p class="quote-empty">未带证词。证据板上的记录，点「引用」就能带给对方看。</p>
+            </div>
+          </div>
+          <div class="tx-step">
+            <p class="step-label"><b aria-hidden="true">3</b>问什么</p>
+            <p id="radio-feedback" class="radio-feedback" aria-live="polite" hidden></p>
+            <form id="free-call-form" class="free-call" hidden>
+              <input id="free-question" type="text" aria-label="自由提问" placeholder="向当前频道提问" maxlength="200" enterkeyhint="send" autocomplete="off" required>
+              <button id="free-call-button" type="submit" class="button-primary">发问</button>
+            </form>
+            <p id="free-call-notice" class="free-call-notice" hidden>自由提问暂不可用，可用下方的预设问题。</p>
+            <h3 class="prompts-label">或用预设问题</h3>
+            <div id="prompt-list" class="presets" role="group" aria-label="预设问题"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel evidence-panel" aria-labelledby="evidence-title">
+        <header class="evidence-heading">
+          <h2 id="evidence-title">证据板</h2>
+          <span class="evidence-count" data-evidence-count aria-hidden="true"></span>
+        </header>
+        <div id="evidence-list" class="evidence-list" aria-label="已取得的证据"></div>
+      </section>
+
+      <section id="outcome" class="outcome" aria-label="派车结果" hidden></section>
+    </main>
+  </div>
+
+  <dialog id="dispatch-dialog" aria-labelledby="dispatch-dialog-title" aria-describedby="dispatch-dialog-copy">
+    <p class="dialog-eyebrow" aria-hidden="true">派车单 · 仅此一辆</p>
+    <h2 id="dispatch-dialog-title">确认派车</h2>
+    <p id="dispatch-dialog-copy"></p>
+    <div class="dialog-actions">
+      <button id="cancel-dispatch" type="button" class="button-quiet" autofocus>继续核对</button>
+      <button id="confirm-dispatch" type="button" class="button-primary">确认派车</button>
+    </div>
+  </dialog>
+
+  <div id="intro" class="intro" role="dialog" aria-modal="true" aria-labelledby="intro-title" aria-describedby="intro-brief" hidden>
+    <canvas class="intro-rain" aria-hidden="true"></canvas>
+    <div class="intro-card">
+      <p class="intro-eyebrow">末班电台 · 第一案</p>
+      <h2 id="intro-title">雨夜<em>红灯</em></h2>
+      <p id="intro-brief" class="intro-brief">暴雨夜，河堤巡检线打来一通求救电话。<br>对方受了伤，说不清自己在哪。</p>
+      <ul class="intro-rules">
+        <li><b>5</b><span>次通话</span></li>
+        <li><b>1</b><span>辆救援车</span></li>
+        <li><b>1</b><span>个地点</span></li>
+      </ul>
+      <button id="answer-call" type="button" class="answer-button"><span class="answer-ring" aria-hidden="true"></span>接听来电</button>
+      <p class="intro-foot">22:16 来电 · 一局约三分钟 · 有声音</p>
+    </div>
+  </div>
+  <script>
+(() => {
+  const surface = document.getElementById('survey-map');
+  const canvas = document.getElementById('survey-canvas');
+  const context = canvas?.getContext('2d');
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const pixelRatio = () => Math.min(window.devicePixelRatio || 1, 2);
+
+  // 巡检线两段折线。地点锚点：北闸 (0.29, 0.25)、排水泵站 (0.68, 0.55)、旧货栈 (0.35, 0.76)。
+  const routes = [
+    [[0.215, 1.04], [0.244, 0.94], [0.28, 0.879], [0.35, 0.76], [0.382, 0.686], [0.428, 0.651], [0.475, 0.606], [0.498, 0.548], [0.485, 0.459], [0.452, 0.402], [0.392, 0.346], [0.29, 0.25], [0.267, 0.142], [0.229, 0.059], [0.201, -0.04]],
+    [[0.498, 0.548], [0.544, 0.528], [0.597, 0.53], [0.635, 0.54], [0.68, 0.55], [0.741, 0.48], [0.765, 0.385], [0.799, 0.33], [0.855, 0.291], [0.91, 0.2], [0.986, 0.15]],
+  ];
+  const stations = { gate: [0.29, 0.25], pump: [0.68, 0.55], warehouse: [0.35, 0.76] };
+  // 救援车从南端驶入，沿巡检线开到目的地。
+  const drives = {
+    warehouse: { path: routes[0].slice(0, 4), duration: 1700 },
+    pump: { path: [...routes[0].slice(0, 8), ...routes[1].slice(1, 5)], duration: 2300 },
+    gate: { path: routes[0].slice(0, 12), duration: 2600 },
+  };
+  const westBank = [
+    [0.73, -0.06],
+    [0.72, 0.075, 0.58, 0.15, 0.55, 0.273],
+    [0.514, 0.406, 0.586, 0.43, 0.548, 0.56],
+    [0.519, 0.652, 0.444, 0.722, 0.426, 0.82],
+    [0.409, 0.916, 0.39, 0.973, 0.33, 1.06],
+  ];
+  const eastBank = [
+    [0.414, 1.06],
+    [0.469, 0.975, 0.472, 0.918, 0.494, 0.833],
+    [0.524, 0.73, 0.589, 0.68, 0.62, 0.565],
+    [0.645, 0.476, 0.58, 0.403, 0.619, 0.28],
+    [0.648, 0.171, 0.799, 0.093, 0.818, -0.06],
+  ];
+  const midstream = [
+    [0.775, -0.06],
+    [0.76, 0.085, 0.616, 0.16, 0.585, 0.276],
+    [0.547, 0.402, 0.613, 0.451, 0.583, 0.563],
+    [0.554, 0.666, 0.483, 0.727, 0.458, 0.825],
+    [0.438, 0.917, 0.43, 0.973, 0.37, 1.06],
+  ];
+
+  function sampleCurve(points, perSegment) {
+    const samples = [];
+    let [startX, startY] = points[0];
+    for (const [handleX1, handleY1, handleX2, handleY2, endX, endY] of points.slice(1)) {
+      for (let part = 0; part < perSegment; part += 1) {
+        const t = part / perSegment;
+        const u = 1 - t;
+        samples.push([
+          u * u * u * startX + 3 * u * u * t * handleX1 + 3 * u * t * t * handleX2 + t * t * t * endX,
+          u * u * u * startY + 3 * u * u * t * handleY1 + 3 * u * t * t * handleY2 + t * t * t * endY,
+        ]);
+      }
+      [startX, startY] = [endX, endY];
+    }
+    samples.push([startX, startY]);
+    return samples;
+  }
+
+  // ---------- 雨 ----------
+  // 三层雨丝，每层一次描边。地图和开场共用。
+  function makeRain(target, density = 1) {
+    const pen = target.getContext('2d');
+    const layers = [
+      { length: 9, speed: 430, alpha: 0.09, share: 0.45 },
+      { length: 15, speed: 640, alpha: 0.14, share: 0.35 },
+      { length: 24, speed: 900, alpha: 0.2, share: 0.2 },
+    ];
+    const slant = 0.17;
+    let width = 0;
+    let height = 0;
+
+    function fit(nextWidth, nextHeight) {
+      const ratio = pixelRatio();
+      width = nextWidth;
+      height = nextHeight;
+      target.width = Math.round(width * ratio);
+      target.height = Math.round(height * ratio);
+      pen.setTransform(ratio, 0, 0, ratio, 0, 0);
+      const count = Math.min(170, (width * height) / 4600) * density;
+      for (const layer of layers) {
+        layer.drops = Array.from({ length: Math.round(count * layer.share) }, () => [
+          Math.random() * (width + height * slant),
+          Math.random() * (height + layer.length),
+        ]);
+      }
+    }
+
+    function step(seconds) {
+      for (const layer of layers) {
+        const fall = layer.speed * seconds;
+        for (const drop of layer.drops ?? []) {
+          drop[1] += fall;
+          drop[0] -= fall * slant;
+          if (drop[1] > height + layer.length) {
+            drop[0] = Math.random() * (width + height * slant);
+            drop[1] = -layer.length;
+          }
+        }
+      }
+    }
+
+    function draw() {
+      pen.lineWidth = 1;
+      pen.lineCap = 'round';
+      for (const layer of layers) {
+        pen.strokeStyle = `rgba(178, 204, 214, ${layer.alpha})`;
+        pen.beginPath();
+        for (const [x, y] of layer.drops ?? []) {
+          pen.moveTo(x, y);
+          pen.lineTo(x - layer.length * slant, y + layer.length);
+        }
+        pen.stroke();
+      }
+    }
+
+    return { pen, fit, step, draw, clear: () => pen.clearRect(0, 0, width, height) };
+  }
+
+  // 给开场用：一块独立的雨幕，返回停止函数。
+  function rainLayer(target) {
+    if (!target?.getContext || still.matches) return () => {};
+    const rain = makeRain(target, 1.15);
+    let alive = true;
+    let last = 0;
+    const fit = () => {
+      const { width, height } = target.getBoundingClientRect();
+      if (width > 0 && height > 0) rain.fit(width, height);
+    };
+    const watcher = new ResizeObserver(fit);
+    watcher.observe(target);
+    fit();
+    const frame = (now) => {
+      if (!alive) return;
+      rain.step(Math.min(0.05, (now - last) / 1000));
+      last = now;
+      rain.clear();
+      rain.draw();
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame((now) => { last = now; frame(now); });
+    return () => {
+      alive = false;
+      watcher.disconnect();
+    };
+  }
+
+  if (!surface || !context) {
+    window.TerminalRadioMap = { drive: () => Promise.resolve(), preview() {}, clear() {}, rainLayer };
+    return;
+  }
+
+  // ---------- 底图 ----------
+  let width = 0;
+  let height = 0;
+
+  function drawSurvey() {
+    const box = surface.getBoundingClientRect();
+    if (box.width < 1 || box.height < 1) return false;
+    width = box.width;
+    height = box.height;
+
+    const ratio = pixelRatio();
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+    const ground = context.createLinearGradient(0, 0, width, height);
+    ground.addColorStop(0, '#1b2123');
+    ground.addColorStop(0.55, '#171c1e');
+    ground.addColorStop(1, '#1a1f20');
+    context.fillStyle = ground;
+    context.fillRect(0, 0, width, height);
+
+    drawGrid();
+    drawContourHill(0.03, 0.15, 0.29, 0.4, 12, 1);
+    drawContourHill(0.1, 0.85, 0.3, 0.44, 11, 3);
+    drawContourHill(0.94, 0.23, 0.27, 0.36, 12, 2);
+    drawContourHill(0.85, 0.81, 0.29, 0.44, 13, 4);
+    drawRiver();
+    drawStationGlow();
+    drawRoutes();
+    drawVignette();
+    drawSurveyCorners();
+    return true;
+  }
+
+  function drawGrid() {
+    const spacing = width < 430 ? 25 : 34;
+    context.lineWidth = 1;
+    for (let x = spacing, line = 1; x < width; x += spacing, line += 1) {
+      context.strokeStyle = line % 4 ? '#93a8a50d' : '#93a8a51c';
+      context.beginPath();
+      context.moveTo(Math.round(x) + 0.5, 0);
+      context.lineTo(Math.round(x) + 0.5, height);
+      context.stroke();
+    }
+    for (let y = spacing, line = 1; y < height; y += spacing, line += 1) {
+      context.strokeStyle = line % 4 ? '#93a8a50d' : '#93a8a51c';
+      context.beginPath();
+      context.moveTo(0, Math.round(y) + 0.5);
+      context.lineTo(width, Math.round(y) + 0.5);
+      context.stroke();
+    }
+  }
+
+  function drawContourHill(centerX, centerY, extentX, extentY, rings, phase) {
+    for (let ring = 1; ring <= rings; ring += 1) {
+      const radius = 0.15 + (ring / rings) * 0.85;
+      context.beginPath();
+      for (let part = 0; part <= 112; part += 1) {
+        const direction = (part / 112) * Math.PI * 2;
+        const bend = 1 + 0.13 * Math.sin(direction * 3 + phase + ring * 0.16)
+          + 0.075 * Math.cos(direction * 5 - phase * 0.5 + ring * 0.1)
+          + 0.027 * Math.sin(direction * 9 + phase);
+        const x = (centerX + radius * extentX * Math.cos(direction) * bend) * width;
+        const y = (centerY + radius * extentY * Math.sin(direction) * bend) * height;
+        if (part === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      }
+      context.closePath();
+      context.lineWidth = ring % 5 === 0 ? 1 : 0.75;
+      context.strokeStyle = ring % 5 === 0 ? '#9fb0a638' : '#95a59c20';
+      context.stroke();
+    }
+  }
+
+  function traceBank(path, points, join = false) {
+    const [[startX, startY], ...curves] = points;
+    if (join) path.lineTo(startX * width, startY * height);
+    else path.moveTo(startX * width, startY * height);
+    for (const [handleX1, handleY1, handleX2, handleY2, endX, endY] of curves) {
+      path.bezierCurveTo(handleX1 * width, handleY1 * height, handleX2 * width, handleY2 * height, endX * width, endY * height);
+    }
+  }
+
+  function drawRiver() {
+    const waterShape = new Path2D();
+    traceBank(waterShape, westBank);
+    traceBank(waterShape, eastBank, true);
+    waterShape.closePath();
+
+    const water = context.createLinearGradient(width * 0.36, height * 0.9, width * 0.82, height * 0.1);
+    water.addColorStop(0, '#1b3138');
+    water.addColorStop(0.5, '#20414a');
+    water.addColorStop(1, '#1c343c');
+    context.fillStyle = water;
+    context.fill(waterShape);
+
+    context.save();
+    context.clip(waterShape);
+    for (const [offset, color] of [[-0.023, '#a9d2dc1c'], [0.014, '#a9d2dc2e'], [0.028, '#a9d2dc16']]) {
+      context.strokeStyle = color;
+      context.lineWidth = 0.8;
+      context.beginPath();
+      const [[startX, startY], ...curves] = midstream;
+      context.moveTo((startX + offset) * width, startY * height);
+      for (const [handleX1, handleY1, handleX2, handleY2, endX, endY] of curves) {
+        context.bezierCurveTo((handleX1 + offset) * width, handleY1 * height, (handleX2 + offset) * width, handleY2 * height, (endX + offset) * width, endY * height);
+      }
+      context.stroke();
+    }
+    context.restore();
+
+    const banks = new Path2D();
+    traceBank(banks, westBank);
+    traceBank(banks, eastBank);
+    context.lineWidth = 5;
+    context.strokeStyle = '#7fb0bd1a';
+    context.stroke(banks);
+    context.lineWidth = 1;
+    context.strokeStyle = '#8fbccb70';
+    context.stroke(banks);
+
+    // 河堤的短齿线，朝背水一侧。
+    context.strokeStyle = '#8fbccb3d';
+    context.lineWidth = 1;
+    context.beginPath();
+    for (const [bank, side] of [[westBank, -1], [eastBank, -1]]) {
+      const samples = sampleCurve(bank, 26);
+      for (let index = 1; index < samples.length - 1; index += 1) {
+        const [x, y] = samples[index];
+        const tangentX = (samples[index + 1][0] - samples[index - 1][0]) * width;
+        const tangentY = (samples[index + 1][1] - samples[index - 1][1]) * height;
+        const reach = Math.hypot(tangentX, tangentY) || 1;
+        const normalX = (-tangentY / reach) * side;
+        const normalY = (tangentX / reach) * side;
+        context.moveTo(x * width + normalX * 3, y * height + normalY * 3);
+        context.lineTo(x * width + normalX * 7.5, y * height + normalY * 7.5);
+      }
+    }
+    context.stroke();
+  }
+
+  function drawStationGlow() {
+    for (const [x, y] of Object.values(stations)) {
+      const reach = Math.max(54, Math.min(width, height) * 0.2);
+      const glow = context.createRadialGradient(x * width, y * height, 0, x * width, y * height, reach);
+      glow.addColorStop(0, '#ffc46321');
+      glow.addColorStop(1, '#ffc46300');
+      context.fillStyle = glow;
+      context.fillRect(x * width - reach, y * height - reach, reach * 2, reach * 2);
+    }
+  }
+
+  function drawRoutes() {
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    for (const route of routes) {
+      context.beginPath();
+      route.forEach(([x, y], point) => {
+        if (point === 0) context.moveTo(x * width, y * height);
+        else context.lineTo(x * width, y * height);
+      });
+      context.lineWidth = 5;
+      context.strokeStyle = '#0e1112cc';
+      context.stroke();
+      context.lineWidth = 1.7;
+      context.strokeStyle = '#c9a45c8f';
+      context.stroke();
+      context.lineWidth = 0.8;
+      context.strokeStyle = '#ffd995b3';
+      context.setLineDash([2, 6]);
+      context.stroke();
+      context.setLineDash([]);
+    }
+
+    const bridgeStart = [0.535 * width, 0.5315 * height];
+    const bridgeEnd = [0.626 * width, 0.538 * height];
+    for (const shift of [-3.5, 3.5]) {
+      context.strokeStyle = '#d8d2bc8c';
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(bridgeStart[0], bridgeStart[1] + shift);
+      context.lineTo(bridgeEnd[0], bridgeEnd[1] + shift);
+      context.stroke();
+    }
+  }
+
+  function drawVignette() {
+    const shade = context.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.35, width / 2, height / 2, Math.max(width, height) * 0.75);
+    shade.addColorStop(0, '#0c0f1000');
+    shade.addColorStop(1, '#0c0f1099');
+    context.fillStyle = shade;
+    context.fillRect(0, 0, width, height);
+  }
+
+  function drawSurveyCorners() {
+    const inset = 11;
+    const size = 10;
+    context.lineWidth = 1;
+    context.strokeStyle = '#c6b69052';
+    for (const [x, y, xDirection, yDirection] of [
+      [inset, inset, 1, 1],
+      [width - inset, inset, -1, 1],
+      [inset, height - inset, 1, -1],
+      [width - inset, height - inset, -1, -1],
+    ]) {
+      context.beginPath();
+      context.moveTo(x, y + yDirection * size);
+      context.lineTo(x, y);
+      context.lineTo(x + xDirection * size, y);
+      context.stroke();
+    }
+  }
+
+  // ---------- 动态层：雨、水面雨圈、派车 ----------
+  const live = document.createElement('canvas');
+  live.className = 'survey-live';
+  live.setAttribute('aria-hidden', 'true');
+  canvas.after(live);
+  const rain = makeRain(live);
+  const pen = rain.pen;
+  const riverLine = sampleCurve(midstream, 12);
+  const ripples = [];
+  let rippleDebt = 0;
+  let preview = null;
+  let drive = null;
+  let running = false;
+  let onScreen = true;
+  let last = 0;
+
+  function stepRipples(seconds) {
+    rippleDebt += seconds * 7;
+    while (rippleDebt > 1) {
+      rippleDebt -= 1;
+      const [x, y] = riverLine[Math.floor(Math.random() * riverLine.length)];
+      if (y > 0.02 && y < 0.98) ripples.push({ x: x + (Math.random() - 0.5) * 0.06, y, age: 0, life: 0.7 + Math.random() * 0.5 });
+    }
+    pen.lineWidth = 1;
+    for (let index = ripples.length - 1; index >= 0; index -= 1) {
+      const ripple = ripples[index];
+      ripple.age += seconds;
+      const t = ripple.age / ripple.life;
+      if (t >= 1) {
+        ripples.splice(index, 1);
+        continue;
+      }
+      pen.strokeStyle = `rgba(175, 214, 224, ${0.3 * (1 - t)})`;
+      pen.beginPath();
+      pen.ellipse(ripple.x * width, ripple.y * height, 2 + t * 9, 1 + t * 3.6, 0, 0, Math.PI * 2);
+      pen.stroke();
+    }
+  }
+
+  // 选中地点后，把救援车要走的路线点亮成一条行进中的虚线。
+  function drawPreview(now) {
+    if (!preview || drive) return;
+    const fade = still.matches ? 1 : Math.min(1, (now - preview.since) / 260);
+    pen.save();
+    pen.lineCap = 'round';
+    pen.lineJoin = 'round';
+    pen.beginPath();
+    preview.path.forEach(([x, y], index) => {
+      if (index) pen.lineTo(x * width, y * height);
+      else pen.moveTo(x * width, y * height);
+    });
+    pen.strokeStyle = `rgba(255, 217, 149, ${0.15 * fade})`;
+    pen.lineWidth = 8;
+    pen.stroke();
+    pen.setLineDash([3, 9]);
+    pen.lineDashOffset = still.matches ? 0 : -(now / 36);
+    pen.strokeStyle = `rgba(255, 228, 176, ${0.92 * fade})`;
+    pen.lineWidth = 2.2;
+    pen.stroke();
+    pen.restore();
+  }
+
+  function drawDrive(now) {
+    if (!drive) return;
+    const points = drive.path.map(([x, y]) => [x * width, y * height]);
+    const reach = [0];
+    for (let index = 1; index < points.length; index += 1) {
+      reach.push(reach[index - 1] + Math.hypot(points[index][0] - points[index - 1][0], points[index][1] - points[index - 1][1]));
+    }
+    const elapsed = now - drive.start;
+    const t = Math.min(1, elapsed / drive.duration);
+    const eased = t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2;
+    const travelled = reach.at(-1) * eased;
+
+    // 压暗底图，让车灯亮出来。到站后慢慢放开。
+    const settle = drive.arrivedAt ? Math.min(1, (now - drive.arrivedAt) / 900) : 0;
+    const dim = Math.min(1, elapsed / 320) * (0.5 - settle * 0.3);
+    pen.fillStyle = `rgba(8, 10, 11, ${dim})`;
+    pen.fillRect(0, 0, width, height);
+
+    let segment = 1;
+    while (segment < points.length - 1 && reach[segment] < travelled) segment += 1;
+    const span = reach[segment] - reach[segment - 1] || 1;
+    const along = Math.min(1, Math.max(0, (travelled - reach[segment - 1]) / span));
+    const headX = points[segment - 1][0] + (points[segment][0] - points[segment - 1][0]) * along;
+    const headY = points[segment - 1][1] + (points[segment][1] - points[segment - 1][1]) * along;
+    const heading = Math.atan2(points[segment][1] - points[segment - 1][1], points[segment][0] - points[segment - 1][0]);
+
+    pen.save();
+    pen.lineCap = 'round';
+    pen.lineJoin = 'round';
+    pen.beginPath();
+    pen.moveTo(points[0][0], points[0][1]);
+    for (let index = 1; index < segment; index += 1) pen.lineTo(points[index][0], points[index][1]);
+    pen.lineTo(headX, headY);
+    pen.shadowColor = '#ffc463';
+    pen.shadowBlur = 12;
+    pen.strokeStyle = '#ffd995';
+    pen.lineWidth = 2.6;
+    pen.stroke();
+    pen.restore();
+
+    if (t < 1) {
+      pen.save();
+      pen.translate(headX, headY);
+      pen.rotate(heading);
+      const beam = pen.createLinearGradient(0, 0, 58, 0);
+      beam.addColorStop(0, 'rgba(255, 236, 196, 0.5)');
+      beam.addColorStop(1, 'rgba(255, 236, 196, 0)');
+      pen.fillStyle = beam;
+      pen.beginPath();
+      pen.moveTo(0, 0);
+      pen.lineTo(58, -19);
+      pen.lineTo(58, 19);
+      pen.closePath();
+      pen.fill();
+      pen.restore();
+    }
+    const halo = pen.createRadialGradient(headX, headY, 0, headX, headY, 20);
+    halo.addColorStop(0, 'rgba(255, 244, 220, 0.95)');
+    halo.addColorStop(0.25, 'rgba(255, 207, 122, 0.6)');
+    halo.addColorStop(1, 'rgba(255, 196, 99, 0)');
+    pen.fillStyle = halo;
+    pen.beginPath();
+    pen.arc(headX, headY, 20, 0, Math.PI * 2);
+    pen.fill();
+
+    if (t >= 1) {
+      drive.arrivedAt ??= now;
+      const since = now - drive.arrivedAt;
+      for (const delay of [0, 260]) {
+        const ring = (since - delay) / 700;
+        if (ring <= 0 || ring >= 1) continue;
+        pen.strokeStyle = `rgba(255, 217, 149, ${0.75 * (1 - ring)})`;
+        pen.lineWidth = 2;
+        pen.beginPath();
+        pen.arc(headX, headY, 14 + ring * 44, 0, Math.PI * 2);
+        pen.stroke();
+      }
+      if (since > 620 && drive.resolve) {
+        drive.resolve();
+        drive.resolve = null;
+      }
+    }
+  }
+
+  function frame(now) {
+    if (!running) return;
+    const seconds = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    rain.clear();
+    if (!still.matches) {
+      rain.step(seconds);
+      stepRipples(seconds);
+    }
+    drawPreview(now);
+    drawDrive(now);
+    if (!still.matches) rain.draw();
+    // 减弱动态时只在派车轨迹需要重画时继续。
+    if (still.matches && (!drive || !drive.resolve)) {
+      running = false;
+      return;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function wake() {
+    if (running || !width) return;
+    if (still.matches ? !drive : !onScreen && !drive) return;
+    running = true;
+    requestAnimationFrame((now) => {
+      last = now;
+      frame(now);
+    });
+  }
+
+  // 不跑动画时（减弱动态、地图在屏幕外）把静止的路线和轨迹画一遍。
+  function paintStill() {
+    if (running || !width) return;
+    rain.clear();
+    drawPreview(performance.now());
+    drawDrive(performance.now());
+  }
+
+  function redraw() {
+    if (!drawSurvey()) return;
+    rain.fit(width, height);
+    paintStill();
+    wake();
+  }
+
+  new ResizeObserver(redraw).observe(surface);
+  new IntersectionObserver(([entry]) => {
+    onScreen = entry.isIntersecting;
+    if (onScreen) wake();
+    else if (!drive?.resolve) running = false;
+  }).observe(surface);
+  still.addEventListener('change', () => {
+    paintStill();
+    wake();
+  });
+  redraw();
+
+  window.TerminalRadioMap = {
+    // 播放救援车驶向目的地。到站后 resolve，轨迹保留到 clear()。
+    // 预览去某个地点的路线，传 null 取消。
+    preview(location) {
+      const plan = drives[location];
+      preview = plan ? { path: plan.path, since: performance.now() } : null;
+      paintStill();
+      wake();
+    },
+    drive(location) {
+      const plan = drives[location];
+      preview = null;
+      if (drive?.resolve) drive.resolve();
+      if (!plan || !width) return Promise.resolve();
+      return new Promise((resolve) => {
+        const instant = still.matches;
+        drive = {
+          path: plan.path,
+          duration: instant ? 1 : plan.duration,
+          start: performance.now() - (instant ? 5000 : 0),
+          arrivedAt: instant ? performance.now() - 5000 : null,
+          resolve,
+        };
+        if (instant) {
+          rain.clear();
+          drawDrive(performance.now());
+          drive.resolve?.();
+          drive.resolve = null;
+          return;
+        }
+        wake();
+      });
+    },
+    clear() {
+      if (drive?.resolve) drive.resolve();
+      drive = null;
+      preview = null;
+      paintStill();
+      wake();
+    },
+    rainLayer,
+  };
+})();
+// 表现层：开场来电、音效、逐字回放、引用飞入、派车动画。
+// 只听 radio-game.js 发出的 radio:* 事件，不读写游戏状态。整段删掉，游戏照常可玩。
+(() => {
+  const root = document.documentElement;
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const narrow = window.matchMedia('(max-width: 760px)');
+  const byId = (id) => document.getElementById(id);
+  const desk = byId('desk');
+  const intro = byId('intro');
+  const answer = byId('answer-call');
+  const soundToggle = byId('sound-toggle');
+  const transmission = byId('current-transmission');
+  const receiver = document.querySelector('.rx');
+  const mapPanel = document.querySelector('.map-panel');
+  const radioPanel = document.querySelector('.radio-panel');
+  const map = () => window.TerminalRadioMap;
+  const timers = new Map();
+
+  function later(name, delay, task) {
+    window.clearTimeout(timers.get(name));
+    timers.set(name, window.setTimeout(task, delay));
+  }
+
+  // 给元素加一个限时的状态类，重复触发时从头再播。
+  function flash(element, className, duration) {
+    if (!element) return;
+    element.classList.remove(className);
+    void element.offsetWidth;
+    element.classList.add(className);
+    window.setTimeout(() => element.classList.remove(className), duration);
+  }
+
+  // ---------- 音效：全部现场合成，不加载任何文件 ----------
+  const audio = (() => {
+    const Engine = window.AudioContext || window.webkitAudioContext;
+    let context = null;
+    let master = null;
+    let cueBus = null;
+    let noise = null;
+    let raining = false;
+    let asleep = false;
+    let enabled = true;
+    try {
+      enabled = window.localStorage.getItem('terminal-radio-sound') !== 'off';
+    } catch {
+      enabled = true;
+    }
+
+    function boot() {
+      if (context) return true;
+      if (!Engine) return false;
+      try {
+        context = new Engine();
+      } catch {
+        return false;
+      }
+      master = context.createGain();
+      master.gain.value = enabled ? 1 : 0;
+      const limiter = context.createDynamicsCompressor();
+      limiter.threshold.value = -16;
+      limiter.ratio.value = 6;
+      master.connect(limiter).connect(context.destination);
+      // 提示音走单独一路，整体音量在这里调，不用逐个改。
+      cueBus = context.createGain();
+      cueBus.gain.value = 1.9;
+      cueBus.connect(master);
+      noise = context.createBuffer(1, context.sampleRate * 4, context.sampleRate);
+      const samples = noise.getChannelData(0);
+      for (let index = 0; index < samples.length; index += 1) samples[index] = Math.random() * 2 - 1;
+      return true;
+    }
+
+    function envelope(start, length, peak) {
+      const level = context.createGain();
+      level.gain.setValueAtTime(0.0001, start);
+      level.gain.exponentialRampToValueAtTime(peak, start + Math.min(0.014, length / 3));
+      level.gain.exponentialRampToValueAtTime(0.0001, start + length);
+      level.connect(cueBus);
+      return level;
+    }
+
+    function tone(at, from, length, peak, { to = from, type = 'sine' } = {}) {
+      const start = context.currentTime + at;
+      const voice = context.createOscillator();
+      voice.type = type;
+      voice.frequency.setValueAtTime(from, start);
+      if (to !== from) voice.frequency.exponentialRampToValueAtTime(to, start + length);
+      voice.connect(envelope(start, length, peak));
+      voice.start(start);
+      voice.stop(start + length + 0.04);
+    }
+
+    function hiss(at, band, length, peak, { to = band, width = 1 } = {}) {
+      const start = context.currentTime + at;
+      const source = context.createBufferSource();
+      source.buffer = noise;
+      const filter = context.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.Q.value = width;
+      filter.frequency.setValueAtTime(band, start);
+      if (to !== band) filter.frequency.exponentialRampToValueAtTime(to, start + length);
+      source.connect(filter).connect(envelope(start, length, peak));
+      source.start(start, Math.random() * 3);
+      source.stop(start + length + 0.04);
+    }
+
+    // 雨声：一层高频雨丝，一层低沉的雨幕，缓慢起伏。
+    function rain() {
+      if (raining) return;
+      raining = true;
+      const bed = context.createGain();
+      bed.gain.setValueAtTime(0.0001, context.currentTime);
+      bed.gain.exponentialRampToValueAtTime(1, context.currentTime + 2.4);
+      bed.connect(master);
+      for (const [type, frequency, width, level, offset] of [
+        ['highpass', 1500, 0.4, 0.02, 0],
+        ['bandpass', 420, 0.5, 0.034, 1.7],
+      ]) {
+        const source = context.createBufferSource();
+        source.buffer = noise;
+        source.loop = true;
+        const filter = context.createBiquadFilter();
+        filter.type = type;
+        filter.frequency.value = frequency;
+        filter.Q.value = width;
+        const gain = context.createGain();
+        gain.gain.value = level;
+        source.connect(filter).connect(gain).connect(bed);
+        source.start(0, offset);
+      }
+      const gust = context.createOscillator();
+      const depth = context.createGain();
+      gust.frequency.value = 0.07;
+      depth.gain.value = 0.22;
+      gust.connect(depth).connect(bed.gain);
+      gust.start();
+    }
+
+    const cues = {
+      answer() {
+        hiss(0, 1700, 0.22, 0.05, { to: 3400, width: 1.6 });
+        tone(0.06, 880, 0.08, 0.045);
+        tone(0.16, 1320, 0.1, 0.045);
+      },
+      reply() {
+        hiss(0, 2600, 0.1, 0.04, { width: 1.4 });
+        tone(0.03, 1040, 0.07, 0.035);
+      },
+      evidence() {
+        tone(0, 150, 0.15, 0.085, { to: 68 });
+        hiss(0, 3800, 0.05, 0.05);
+        tone(0.1, 1568, 0.2, 0.03, { type: 'triangle' });
+      },
+      quote() {
+        hiss(0, 5200, 0.04, 0.045);
+        tone(0.03, 740, 0.08, 0.032, { type: 'triangle' });
+      },
+      unquote() {
+        tone(0, 520, 0.07, 0.028, { type: 'triangle' });
+      },
+      tune() {
+        hiss(0, 900, 0.17, 0.045, { to: 3400, width: 2.4 });
+        tone(0.14, 660, 0.05, 0.028);
+      },
+      deny() {
+        tone(0, 196, 0.1, 0.06, { type: 'triangle' });
+        tone(0.14, 196, 0.12, 0.06, { type: 'triangle' });
+      },
+      select() {
+        tone(0, 520, 0.06, 0.032, { type: 'triangle' });
+      },
+      exclude() {
+        tone(0, 330, 0.1, 0.036, { to: 220, type: 'triangle' });
+      },
+      dispatch() {
+        tone(0, 1180, 0.13, 0.04);
+        hiss(0.1, 130, 1.9, 0.09, { to: 250, width: 1.1 });
+        tone(0.1, 62, 1.8, 0.07, { to: 96, type: 'triangle' });
+      },
+      success() {
+        tone(0, 523.25, 0.5, 0.05);
+        tone(0.13, 659.25, 0.5, 0.05);
+        tone(0.26, 783.99, 0.9, 0.05);
+      },
+      partial() {
+        tone(0, 523.25, 0.45, 0.045);
+        tone(0.15, 622.25, 0.8, 0.045);
+      },
+      fail() {
+        tone(0, 311.13, 0.5, 0.055, { type: 'triangle' });
+        tone(0.18, 233.08, 1, 0.055, { type: 'triangle' });
+      },
+    };
+
+    return {
+      get enabled() {
+        return enabled;
+      },
+      // 必须在用户手势里调用，浏览器才允许出声。
+      unlock() {
+        if (!boot()) return;
+        if (context.state === 'suspended') context.resume().catch(() => {});
+        rain();
+      },
+      play(name) {
+        if (!context || !enabled || asleep || !cues[name]) return;
+        if (context.state === 'running') cues[name]();
+        else context.resume().then(() => cues[name]()).catch(() => {});
+      },
+      set(next) {
+        enabled = next;
+        try {
+          window.localStorage.setItem('terminal-radio-sound', enabled ? 'on' : 'off');
+        } catch {
+          // 存不了也不影响本局。
+        }
+        if (context) master.gain.setTargetAtTime(enabled ? 1 : 0, context.currentTime, 0.04);
+      },
+      pause(hidden) {
+        asleep = hidden;
+        if (!context) return;
+        if (hidden) context.suspend().catch(() => {});
+        else context.resume().catch(() => {});
+      },
+    };
+  })();
+
+  if (soundToggle) {
+    const showSound = () => soundToggle.setAttribute('aria-pressed', String(audio.enabled));
+    showSound();
+    soundToggle.addEventListener('click', () => {
+      audio.unlock();
+      audio.set(!audio.enabled);
+      showSound();
+      if (audio.enabled) window.setTimeout(() => audio.play('select'), 60);
+    });
+  }
+  document.addEventListener('visibilitychange', () => audio.pause(document.hidden));
+
+  // ---------- 示波器 ----------
+  // 有人说话时是起伏的语音波形，等模型回话时是一条平稳的载波，其余时间几乎是直线。
+  const scope = (() => {
+    const canvas = document.querySelector('.scope');
+    const pen = canvas?.getContext('2d');
+    if (!pen) return { speak() {}, call() {} };
+    let width = 0;
+    let height = 0;
+    let level = 0;
+    let speaking = false;
+    let calling = false;
+    let running = false;
+
+    function draw(now) {
+      if (!width) return;
+      const t = now / 1000;
+      const target = speaking ? 1 : calling ? 0.5 : 0.04;
+      level += (target - level) * (still.matches ? 1 : 0.14);
+      const mid = height / 2;
+      pen.clearRect(0, 0, width, height);
+      pen.strokeStyle = 'rgba(255, 196, 99, 0.16)';
+      pen.lineWidth = 1;
+      pen.beginPath();
+      pen.moveTo(0, Math.round(mid) + 0.5);
+      pen.lineTo(width, Math.round(mid) + 0.5);
+      pen.stroke();
+      pen.beginPath();
+      for (let x = 0; x <= width; x += 2) {
+        const u = x / width;
+        const taper = Math.sin(Math.PI * u) ** 0.7;
+        const shape = calling && !speaking
+          ? Math.sin(u * 40 - t * 8)
+          : (Math.sin(u * 52 - t * 14) * 0.5 + Math.sin(u * 97 + t * 8.3) * 0.28 + Math.sin(u * 19 - t * 4.7) * 0.34)
+            * (0.3 + 0.7 * Math.abs(Math.sin(t * 5.3 + u * 2.6)));
+        const y = mid + shape * level * (mid - 3) * taper;
+        if (x) pen.lineTo(x, y);
+        else pen.moveTo(x, y);
+      }
+      pen.strokeStyle = '#ffc463';
+      pen.lineWidth = 1.6;
+      pen.lineJoin = 'round';
+      pen.shadowColor = '#ffc463';
+      pen.shadowBlur = level > 0.1 ? 9 : 0;
+      pen.globalAlpha = 0.35 + Math.min(0.65, level * 1.4);
+      pen.stroke();
+      pen.globalAlpha = 1;
+      pen.shadowBlur = 0;
+    }
+
+    function frame(now) {
+      draw(now);
+      if (speaking || calling || level > 0.06) requestAnimationFrame(frame);
+      else running = false;
+    }
+
+    function wake() {
+      if (still.matches) {
+        draw(performance.now());
+        return;
+      }
+      if (running) return;
+      running = true;
+      requestAnimationFrame(frame);
+    }
+
+    new ResizeObserver(() => {
+      const box = canvas.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) return;
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      width = box.width;
+      height = box.height;
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(height * ratio);
+      pen.setTransform(ratio, 0, 0, ratio, 0, 0);
+      draw(performance.now());
+    }).observe(canvas);
+
+    return {
+      speak(on) {
+        speaking = on;
+        wake();
+      },
+      call(on) {
+        calling = on;
+        wake();
+      },
+    };
+  })();
+  new MutationObserver(() => scope.call(root.dataset.busy === 'true'))
+    .observe(root, { attributes: true, attributeFilter: ['data-busy'] });
+
+  function setSpeaking(on) {
+    receiver?.classList.toggle('is-speaking', on);
+    scope.speak(on);
+  }
+
+  // 剧情时间跟着最新一条通话走。
+  const storyClock = document.querySelector('[data-story-clock]');
+  function syncClock() {
+    const now = transmission?.querySelector('.transmission-clock')?.textContent;
+    if (!storyClock || !now || storyClock.textContent === now) return;
+    storyClock.textContent = now;
+    flash(storyClock, 'is-ticking', 600);
+  }
+
+  // ---------- 逐字回放 ----------
+  function replay(length = 0, delay = 0) {
+    if (!transmission) return;
+    transmission.style.setProperty('--reveal-delay', `${delay}ms`);
+    transmission.classList.remove('is-fresh', 'is-settled');
+    void transmission.offsetWidth;
+    transmission.classList.add('is-fresh');
+    if (still.matches) return;
+    later('speaking-start', delay, () => setSpeaking(true));
+    later('speaking-end', delay + length * 24 + 380, () => setSpeaking(false));
+  }
+  transmission?.addEventListener('click', () => {
+    transmission.classList.add('is-settled');
+    window.clearTimeout(timers.get('speaking-end'));
+    setSpeaking(false);
+  });
+
+  // ---------- 开场来电 ----------
+  // 自动化浏览器里默认跳过，避免挡住现有检查脚本。#intro=1 强制显示，#intro=0 强制跳过（写成 ?intro= 也认）。
+  const wish = new URLSearchParams(window.location.hash.slice(1)).get('intro')
+    ?? new URLSearchParams(window.location.search).get('intro');
+  const showIntro = Boolean(intro && answer && desk) && (wish === '1' || (wish !== '0' && !navigator.webdriver));
+  if (showIntro) {
+    let stopRain = () => {};
+    root.dataset.intro = 'ringing';
+    intro.hidden = false;
+    desk.inert = true;
+    stopRain = map()?.rainLayer(intro.querySelector('canvas')) ?? stopRain;
+    answer.focus({ preventScroll: true });
+    answer.addEventListener('click', () => {
+      audio.unlock();
+      audio.play('answer');
+      desk.inert = false;
+      root.dataset.intro = 'leaving';
+      replay(transmission?.textContent.length ?? 0, 620);
+      window.setTimeout(() => {
+        intro.hidden = true;
+        stopRain();
+        delete root.dataset.intro;
+      }, 760);
+      document.querySelector('main')?.focus({ preventScroll: true });
+    }, { once: true });
+  } else {
+    const unlock = () => {
+      audio.unlock();
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
+    window.addEventListener('pointerdown', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+  }
+
+  // ---------- 游戏事件 ----------
+  let firstClueSeen = false;
+  let staging = 0;
+
+  document.addEventListener('radio:reset', ({ detail }) => {
+    staging += 1;
+    firstClueSeen = false;
+    if (radioPanel) radioPanel.inert = false;
+    map()?.clear();
+    timers.forEach((timer) => window.clearTimeout(timer));
+    setSpeaking(false);
+    syncClock();
+    if (!detail.replay) return;
+    replay(transmission?.textContent.length ?? 0, 200);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    audio.play('answer');
+  });
+
+  document.addEventListener('radio:call', ({ detail }) => {
+    audio.play('reply');
+    replay(detail.length, 80);
+    syncClock();
+    flash(byId('call-count'), 'is-ticking', 600);
+    if (detail.clue) {
+      later('evidence-cue', 300, () => audio.play('evidence'));
+      if (!firstClueSeen) {
+        firstClueSeen = true;
+        later('nudge', 900, () => flash(document.querySelector('.quote-empty'), 'is-nudged', 3200));
+      }
+    }
+    if (narrow.matches) receiver?.scrollIntoView({ block: 'nearest', behavior: still.matches ? 'auto' : 'smooth' });
+  });
+
+  document.addEventListener('radio:denied', ({ detail }) => {
+    audio.play('deny');
+    flash(byId('radio-feedback'), 'is-shaking', 500);
+    if (detail.reason !== 'quote') return;
+    if (detail.held) flash(document.querySelector(`.quote-button[data-evidence-id="${detail.needs}"]`), 'is-wanted', 2600);
+    else flash(document.querySelector('#radio-channels [data-channel="caller"]'), 'is-suggested', 2600);
+  });
+
+  document.addEventListener('radio:channel', () => audio.play('tune'));
+  // 选中一个没被排除的地点，就在地图上点亮去那里的路线。
+  function previewRoute(location) {
+    const point = document.querySelector(`#map-points [data-location="${location}"]`);
+    map()?.preview?.(point && !point.classList.contains('is-excluded') ? location : null);
+  }
+  document.addEventListener('radio:select', ({ detail }) => {
+    audio.play('select');
+    previewRoute(detail.location);
+  });
+  document.addEventListener('radio:exclude', ({ detail }) => {
+    audio.play('exclude');
+    previewRoute(detail.location);
+  });
+
+  // ---------- 把证据卡拖到「带上证词」 ----------
+  // 和点「引用」是同一件事：落下时替玩家按那张卡的引用按钮。
+  const board = byId('evidence-list');
+  const dock = document.querySelector('.quote-dock');
+  const dropZone = document.querySelector('.tx');
+  if (board && dock && dropZone) {
+    let carried = null;
+    const arm = () => board.querySelectorAll('.evidence-card').forEach((card) => { card.draggable = true; });
+    new MutationObserver(arm).observe(board, { childList: true });
+    arm();
+    const settle = () => {
+      carried = null;
+      dock.classList.remove('is-target', 'is-over');
+    };
+    board.addEventListener('dragstart', (event) => {
+      const card = event.target.closest?.('.evidence-card');
+      const button = card?.querySelector('.quote-button');
+      if (!card || !button || button.disabled) {
+        event.preventDefault();
+        return;
+      }
+      carried = card.dataset.clue;
+      event.dataTransfer.effectAllowed = 'copy';
+      event.dataTransfer.setData('text/plain', card.querySelector('.evidence-name')?.textContent ?? '');
+      dock.classList.add('is-target');
+    });
+    board.addEventListener('dragend', settle);
+    dropZone.addEventListener('dragover', (event) => {
+      if (!carried) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+      dock.classList.add('is-over');
+    });
+    dropZone.addEventListener('dragleave', (event) => {
+      if (!dropZone.contains(event.relatedTarget)) dock.classList.remove('is-over');
+    });
+    dropZone.addEventListener('drop', (event) => {
+      if (!carried) return;
+      event.preventDefault();
+      const button = board.querySelector(`.quote-button[data-evidence-id="${carried}"]`);
+      settle();
+      if (button && !button.disabled && button.getAttribute('aria-pressed') !== 'true') button.click();
+    });
+  }
+
+  document.addEventListener('radio:quote', ({ detail }) => {
+    if (!detail.id) {
+      audio.play('unquote');
+      return;
+    }
+    audio.play('quote');
+    const card = document.querySelector(`.evidence-card[data-clue="${detail.id}"]`);
+    const dock = byId('active-quote');
+    if (!card || !dock) return;
+    flash(dock, 'is-landing', 700);
+    if (still.matches || typeof card.animate !== 'function') return;
+    const from = card.getBoundingClientRect();
+    const to = dock.getBoundingClientRect();
+    if (!from.width || !to.width) return;
+    // 一张纸从证据板滑到发问区。不克隆卡片，免得页面里出现第二个引用按钮。
+    const ghost = document.createElement('div');
+    ghost.className = 'quote-ghost';
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.textContent = card.querySelector('.evidence-name')?.textContent ?? '';
+    Object.assign(ghost.style, {
+      left: `${from.left}px`,
+      top: `${from.top}px`,
+      width: `${from.width}px`,
+      height: `${from.height}px`,
+    });
+    document.body.append(ghost);
+    const flight = ghost.animate([
+      { transform: 'translate(0, 0) scale(1)', opacity: 0.96 },
+      {
+        transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${to.width / from.width}, ${Math.min(1, to.height / from.height)})`,
+        opacity: 0.25,
+      },
+    ], { duration: 440, easing: 'cubic-bezier(.3, .7, .2, 1)' });
+    flight.finished.catch(() => {}).then(() => ghost.remove());
+  });
+
+  document.addEventListener('radio:outcome', ({ detail }) => {
+    const run = staging += 1;
+    // 电台已经用不上了，连键盘焦点一起收走。
+    if (radioPanel) radioPanel.inert = true;
+    const drive = map()?.drive;
+    if (!drive) return;
+    // 结果已经写进页面。先把它藏住，等救援车开到再露出来。
+    root.dataset.phase = 'dispatching';
+    audio.play('dispatch');
+    if (narrow.matches && mapPanel) {
+      window.scrollTo({ top: Math.max(0, mapPanel.getBoundingClientRect().top + window.scrollY - 64), behavior: 'instant' });
+    }
+    drive(detail.target).then(() => {
+      if (run !== staging) return;
+      root.dataset.phase = 'outcome';
+      audio.play(detail.correct ? (detail.fullEvidence ? 'success' : 'partial') : 'fail');
+      if (narrow.matches) byId('outcome')?.scrollIntoView({ block: 'nearest', behavior: still.matches ? 'auto' : 'smooth' });
+    });
+  });
+})();
+(() => {
+  const callLimit = 5;
+  const locations = {
+    gate: '北闸',
+    pump: '排水泵站',
+    warehouse: '旧货栈',
+  };
+  // 列举站房时一律按这个顺序，免得从排列里看出答案。
+  const stationOrder = ['gate', 'pump', 'warehouse'];
+  const opening = {
+    speaker: '求救者',
+    channel: 'caller',
+    clock: '22:16:00',
+    message: '这里是河堤巡检线。我摔伤了，人在一间站房里。就在这间屋的门檐底下，有一盏红灯一直在闪。雨太大，我看不见门牌。',
+  };
+  // 灯号：s 短闪，l 长闪。heard 是求救者描述这种节奏的原话。
+  const lampCodes = {
+    ssl: { name: '两短一长', heard: '先是两下很快，第三下亮得久。每一轮都一样。' },
+    sll: { name: '一短两长', heard: '先一下很快，接着两下都亮得久。每一轮都一样。' },
+    lss: { name: '一长两短', heard: '先亮一下很久，接着两下很快。每一轮都一样。' },
+    lls: { name: '两长一短', heard: '先两下都亮得久，最后一下很快。每一轮都一样。' },
+  };
+  // 停电时段都盖住来电的 22:16。
+  const outageWindows = [['22:10', '22:20'], ['22:05', '22:25'], ['22:12', '22:30'], ['22:00', '22:18']];
+  // 第一案固定不变：演示、录屏和检查脚本都认它。
+  const firstCase = { answer: 'pump', dark: 'gate', odd: 'warehouse', seen: 'ssl', other: 'sll', outage: outageWindows[0] };
+
+  // 一案的全部内容由六项决定：
+  // answer 求救者所在站房；dark 灯号相同但当时断电的站房；odd 灯号不同的站房；
+  // seen 求救者看到的灯号；other 第三处站房的灯号；outage 断电起止时间。
+  // 规则、提问意图和台词句式不变，所以服务端和模型不用跟着改。
+  function buildCase(spec) {
+    const { answer, dark, odd, seen, other, outage: [from, to] } = spec;
+    const [first, second] = stationOrder.filter((id) => id !== odd).map((id) => locations[id]);
+    const seenName = lampCodes[seen].name;
+    const otherName = lampCodes[other].name;
+    const lampMarks = {};
+    const powerMarks = {};
+    stationOrder.forEach((id) => {
+      lampMarks[id] = id === odd ? { code: other, label: otherName } : { code: seen, label: seenName };
+      powerMarks[id] = id === dark ? { power: 'off', label: `${from}–${to} 断电` } : { power: 'on', label: '供电正常' };
+    });
+    return {
+      spec,
+      solution: answer,
+      clues: {
+        signal: {
+          name: '求救证词',
+          source: '求救者',
+          text: `22:16，门檐红灯${seenName}。`,
+          code: seen,
+          codeLabel: seenName,
+        },
+        archive: {
+          name: '灯号档案',
+          source: '灯号值守员',
+          text: `${first}、${second}${seenName}，${locations[odd]}${otherName}。`,
+          marks: lampMarks,
+        },
+        outage: {
+          name: '停电记录',
+          source: '维修电工',
+          text: `${locations[dark]}门灯 ${from}–${to} 断电，无备用供电。`,
+          marks: powerMarks,
+        },
+      },
+      // 结算时回放：哪份记录排除了哪里。
+      proofs: [
+        ['archive', `灯号档案排除${locations[odd]}。它的灯是${otherName}，求救者看到的是${seenName}。`],
+        ['outage', `停电记录排除${locations[dark]}。22:16 ${locations[dark]}门灯断电，无备用供电。`],
+      ],
+      channels: {
+        caller: {
+          name: '求救者',
+          unknownReply: '这我说不清。我能看见门檐下的红灯，你想问灯吗？',
+          prompts: [
+            {
+              intent: 'pattern',
+              topic: '闪灯节奏',
+              question: '门檐灯是怎么闪的？',
+              reply: lampCodes[seen].heard,
+              clue: 'signal',
+            },
+            {
+              intent: 'landmark',
+              topic: '周围地标',
+              question: '你能看到什么地标？',
+              reply: '窗外全是雨，只看得见这间屋门檐下的红灯。它一直按同一个节奏闪。',
+            },
+          ],
+        },
+        archive: {
+          name: '灯号值守员',
+          unknownReply: '我手上是站房的灯号档案。你想查哪种灯号？',
+          prompts: [
+            {
+              intent: 'lookup',
+              topic: '按灯号查档',
+              question: '哪些站房用这个灯号？',
+              reply: `查到了。${first}和${second}都是${seenName}。${locations[odd]}是${otherName}。`,
+              needsQuote: 'signal',
+              clue: 'archive',
+            },
+            {
+              intent: 'outagesRedirect',
+              topic: '今晚停电',
+              question: '今晚哪些灯没亮？',
+              reply: '我这里有三处站房的灯号档案。今晚哪儿停电，得问维修电工。',
+            },
+          ],
+        },
+        electric: {
+          name: '维修电工',
+          unknownReply: '我只能查今晚的灯路维修单。你想查哪个时候的供电？',
+          prompts: [
+            {
+              intent: 'outage',
+              topic: '停电记录',
+              question: '22:16 哪些门灯断电？',
+              reply: `${locations[dark]}门灯 ${from} 到 ${to} 断电，这盏灯没接备用电源。另两处门灯正常供电。`,
+              clue: 'outage',
+            },
+            {
+              intent: 'patternRedirect',
+              topic: '灯号含义',
+              question: '维修单上有灯号吗？',
+              reply: '维修单只记灯路通断。各站房的闪灯节奏，请问灯号值守员。',
+            },
+          ],
+        },
+      },
+    };
+  }
+
+  // 发下一案：答案一定换一处站房，其余随机。
+  function dealCase(previous) {
+    const pick = (list) => list[Math.floor(Math.random() * list.length)];
+    const answer = pick(stationOrder.filter((id) => id !== previous.answer));
+    const dark = pick(stationOrder.filter((id) => id !== answer));
+    const odd = stationOrder.find((id) => id !== answer && id !== dark);
+    const seen = pick(Object.keys(lampCodes));
+    const other = pick(Object.keys(lampCodes).filter((code) => code !== seen));
+    return { answer, dark, odd, seen, other, outage: pick(outageWindows) };
+  }
+
+  // 当前这一案。reset 时整体换掉，其余代码照旧读这几个名字。
+  let scene = buildCase(firstCase);
+  let { solution, clues, channels } = scene;
+  // 本班战绩：每案只记第一次派车的结果。
+  const shift = { number: 1, cases: 0, saved: 0 };
+
+  function init() {
+    const byId = (id) => document.getElementById(id);
+    const elements = {
+      callCount: byId('call-count'),
+      radioStatus: byId('radio-status'),
+      transmission: byId('current-transmission'),
+      history: byId('call-history'),
+      historyList: byId('call-history-list'),
+      promptList: byId('prompt-list'),
+      freeCallForm: byId('free-call-form'),
+      freeQuestion: byId('free-question'),
+      freeCallButton: byId('free-call-button'),
+      freeCallNotice: byId('free-call-notice'),
+      feedback: byId('radio-feedback'),
+      evidenceList: byId('evidence-list'),
+      activeQuote: byId('active-quote'),
+      mapFeedback: byId('map-feedback'),
+      excludeButton: byId('exclude-button'),
+      dispatchButton: byId('dispatch-button'),
+      dialog: byId('dispatch-dialog'),
+      dialogTitle: byId('dispatch-dialog-title'),
+      dialogCopy: byId('dispatch-dialog-copy'),
+      cancelDispatch: byId('cancel-dispatch'),
+      confirmDispatch: byId('confirm-dispatch'),
+      outcome: byId('outcome'),
+      evidenceCount: document.querySelector('[data-evidence-count]'),
+      mapWitness: document.querySelector('[data-map-witness]'),
+      caseNumber: document.querySelector('[data-case-number]'),
+    };
+    const root = document.documentElement;
+    const channelButtons = [...byId('radio-channels').querySelectorAll('button[data-channel]')];
+    const mapButtons = [...byId('map-points').querySelectorAll('button[data-location]')];
+    const signalBars = [...byId('signal-meter').querySelectorAll('.signal-bar')];
+    let state;
+    let freeCallAvailable = false;
+    let composing = false;
+    let ignoreCompositionSubmit = false;
+
+    function node(tag, className, content) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      if (content) element.textContent = content;
+      return element;
+    }
+
+    // 表现层（音效、动画、开场）只监听这些事件，不改游戏状态。
+    function emit(name, detail = {}) {
+      document.dispatchEvent(new CustomEvent(`radio:${name}`, { detail }));
+    }
+
+    // 逐字显示用。文字一次写入，朗读与 innerText 都拿得到整句。
+    function spell(text) {
+      const fragment = document.createDocumentFragment();
+      [...text].forEach((character, index) => {
+        const glyph = node('span', 'glyph', character);
+        glyph.style.setProperty('--i', String(index));
+        fragment.append(glyph);
+      });
+      return fragment;
+    }
+
+    // 灯号图形：s 短闪，l 长闪，文字说明由旁边的标签给出。
+    // 一拍 0.26 秒：短闪 1 拍，长闪 3 拍，间隔 1 拍，每轮停 4 拍。每个记号的起点交给样式，按真实节奏亮。
+    function lampCode(code) {
+      const beat = 0.26;
+      const lengths = [...code].map((kind) => (kind === 'l' ? 3 : 1));
+      const units = lengths.reduce((sum, length) => sum + length, 0) + lengths.length - 1 + 4;
+      const mark = node('span', 'lamp-code');
+      mark.dataset.code = code;
+      mark.dataset.units = String(units);
+      mark.style.setProperty('--cycle', `${(units * beat).toFixed(2)}s`);
+      mark.setAttribute('aria-hidden', 'true');
+      let start = 0;
+      lengths.forEach((length) => {
+        const light = node('i', length === 3 ? 'beat is-long' : 'beat');
+        light.style.setProperty('--at', `${((start - units) * beat).toFixed(2)}s`);
+        mark.append(light);
+        start += length + 1;
+      });
+      return mark;
+    }
+
+    function setButtonLabel(button, label) {
+      (button.querySelector('[data-button-label]') ?? button).textContent = label;
+    }
+
+    function setRadioFeedback(message = '') {
+      elements.feedback.hidden = !message;
+      elements.feedback.textContent = message;
+    }
+
+    function remaining() {
+      return callLimit - state.calls.length;
+    }
+
+    function canCall() {
+      return !state.pendingCall && !state.outcome && remaining() > 0;
+    }
+
+    function canDispatch() {
+      return !state.pendingCall && !state.outcome && Boolean(state.selected) && !state.excluded.has(state.selected);
+    }
+
+    function hasFullEvidence() {
+      return state.evidence.has('archive') && state.evidence.has('outage');
+    }
+
+    function callTime(callNumber) {
+      const elapsed = callNumber * 30;
+      return `22:${16 + Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
+    }
+
+    function updateCallControls() {
+      const callsLeft = remaining();
+      const busy = Boolean(state.pendingCall);
+      const canContinue = !state.outcome && callsLeft > 0;
+      if (elements.callCount.textContent !== String(callsLeft)) {
+        elements.callCount.textContent = String(callsLeft);
+      }
+      root.dataset.calls = String(callsLeft);
+      root.dataset.busy = String(busy);
+      signalBars.forEach((bar, index) => {
+        bar.classList.toggle('is-used', index >= callsLeft);
+      });
+      channelButtons.forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.channel === state.channel));
+        button.disabled = busy;
+      });
+      const callButtons = [
+        ...elements.promptList.querySelectorAll('button'),
+        ...elements.evidenceList.querySelectorAll('.quote-button'),
+        ...elements.activeQuote.querySelectorAll('.remove-quote'),
+      ];
+      callButtons.forEach((button) => {
+        button.disabled = !canCall();
+      });
+      if (elements.freeCallForm) {
+        elements.freeCallForm.setAttribute('aria-busy', String(busy));
+        elements.freeQuestion.readOnly = busy;
+        elements.freeQuestion.disabled = !canContinue;
+        elements.freeCallButton.disabled = !canContinue;
+        elements.freeCallButton.setAttribute('aria-disabled', String(busy || !canContinue));
+      }
+      let radioStatus;
+      if (state.outcome) {
+        radioStatus = '已派车';
+      } else if (busy) {
+        radioStatus = '通话中';
+      } else if (!callsLeft) {
+        radioStatus = '通话用尽';
+      } else {
+        radioStatus = state.calls.length ? '待命' : '接报';
+      }
+      if (elements.radioStatus.textContent !== radioStatus) {
+        elements.radioStatus.textContent = radioStatus;
+      }
+    }
+
+    async function fetchJson(path, { controller, timeout, ...options }) {
+      const deadline = window.setTimeout(() => controller.abort(), timeout);
+      try {
+        const response = await fetch(path, {
+          ...options,
+          mode: 'same-origin',
+          redirect: 'error',
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          const result = await response.json().catch(() => null);
+          throw new Error(result?.error ?? 'unavailable');
+        }
+        return await response.json();
+      } finally {
+        window.clearTimeout(deadline);
+      }
+    }
+
+    async function detectFreeCall() {
+      if (!elements.freeCallForm) return;
+      if (['http:', 'https:'].includes(window.location.protocol)) {
+        try {
+          const result = await fetchJson('/api/status', {
+            controller: new AbortController(),
+            timeout: 3500,
+            cache: 'no-store',
+          });
+          freeCallAvailable = result?.available === true;
+        } catch {
+          freeCallAvailable = false;
+        }
+      }
+      elements.freeCallForm.hidden = !freeCallAvailable;
+      elements.freeCallNotice.hidden = freeCallAvailable;
+    }
+
+    async function submitFreeCall(event) {
+      event.preventDefault();
+      if (!freeCallAvailable || !canCall() || composing || ignoreCompositionSubmit || elements.dialog.open) return;
+      const question = elements.freeQuestion.value;
+      if (!question.trim()) {
+        setRadioFeedback('请输入要问的问题。');
+        return;
+      }
+      const channel = state.channel;
+      const request = new AbortController();
+      state.pendingCall = request;
+      setRadioFeedback();
+      updateCallControls();
+      renderMap();
+      let prompt;
+      try {
+        const result = await fetchJson('/api/radio', {
+          controller: request,
+          timeout: 16000,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel, question, quoteId: state.quote }),
+        });
+        const channelData = channels[channel];
+        prompt = result?.intent === 'unknown'
+          ? { reply: channelData.unknownReply, topic: '没听出能答的问题' }
+          : channelData.prompts.find(({ intent }) => intent === result?.intent);
+        if (!prompt) throw new Error('Unexpected radio intent');
+      } catch (error) {
+        if (state.pendingCall !== request) return;
+        state.pendingCall = null;
+        const notices = {
+          authorization: '魔搭未接受令牌。请核对令牌和推理权限，或先用预设问题。',
+          quota: '魔搭暂时限流或额度不足。可稍后重试或使用预设问题。',
+          timeout: '通话超时。可重试或使用预设问题。',
+        };
+        const noticeKey = request.signal.aborted ? 'timeout' : error.message;
+        setRadioFeedback(Object.hasOwn(notices, noticeKey) ? notices[noticeKey] : '通话未接通。可重试或使用预设问题。');
+        updateCallControls();
+        renderMap();
+        emit('denied', { reason: 'failed' });
+        return;
+      }
+      if (state.pendingCall !== request) return;
+      state.pendingCall = null;
+      const active = document.activeElement;
+      const anchor = active === elements.freeQuestion || active === elements.freeCallButton ? active : null;
+      if (completeCall(prompt, anchor, question, true)) {
+        elements.freeQuestion.value = '';
+      } else {
+        updateCallControls();
+      }
+      renderMap();
+    }
+
+    function renderTransmission() {
+      const latest = state.calls.at(-1) ?? opening;
+      const head = node('div', 'transmission-head');
+      const face = node('span', 'face');
+      face.dataset.face = latest.channel;
+      face.setAttribute('aria-hidden', 'true');
+      head.append(
+        face,
+        node('span', 'transmission-speaker', latest.speaker),
+        node('span', 'transmission-clock', latest.clock),
+      );
+      const parts = [head];
+      if (latest.question) {
+        const asked = node('p', 'transmission-question');
+        asked.append(node('span', 'transmission-asked', '你问'), node('span', '', latest.question));
+        parts.push(asked);
+      }
+      const message = node('p', 'transmission-message');
+      message.append(spell(latest.message));
+      parts.push(message);
+      const notes = [
+        latest.heard && ['is-heard', `模型听成 · ${latest.heard}`],
+        latest.gain && [latest.fresh ? 'is-gain' : 'is-known', latest.fresh ? `新证据 · ${latest.gain}` : `证据板已有 · ${latest.gain}`],
+      ].filter(Boolean);
+      if (notes.length) {
+        const footer = node('p', 'transmission-notes');
+        notes.forEach(([kind, label]) => footer.append(node('span', `transmission-note ${kind}`, label)));
+        parts.push(footer);
+      }
+      elements.transmission.replaceChildren(...parts);
+      const historyItems = [opening, ...state.calls].map((entry) => {
+        const item = node('li', 'history-entry');
+        item.append(
+          node('div', 'history-speaker', `${entry.clock} · ${entry.speaker}`),
+        );
+        if (entry.question) item.append(node('div', 'history-question', entry.question));
+        item.append(node('div', 'history-message', entry.message));
+        return item;
+      });
+      elements.historyList.replaceChildren(...historyItems);
+      elements.history.hidden = !state.calls.length;
+    }
+
+    function renderPresets() {
+      const buttons = channels[state.channel].prompts.map((prompt) => {
+        const button = node('button', 'preset-button', prompt.question);
+        button.type = 'button';
+        button.disabled = !canCall();
+        button.addEventListener('click', () => completeCall(prompt, button));
+        return button;
+      });
+      elements.promptList.replaceChildren(...buttons);
+      if (elements.freeQuestion) elements.freeQuestion.placeholder = `用自己的话问${channels[state.channel].name}`;
+    }
+
+    function renderQuote() {
+      elements.evidenceList.querySelectorAll('.quote-button').forEach((button) => {
+        const isQuoted = button.dataset.evidenceId === state.quote;
+        button.setAttribute('aria-pressed', String(isQuoted));
+        button.textContent = isQuoted ? '已引用' : '引用';
+        button.disabled = !canCall();
+      });
+      elements.activeQuote.hidden = !state.quote;
+      if (!state.quote) {
+        elements.activeQuote.replaceChildren();
+        return;
+      }
+      const clue = clues[state.quote];
+      const clear = node('button', 'remove-quote', '移除');
+      clear.type = 'button';
+      clear.disabled = !canCall();
+      clear.setAttribute('aria-label', `移除引用 ${clue.name}`);
+      clear.addEventListener('click', () => {
+        if (!canCall()) return;
+        const button = elements.evidenceList.querySelector(
+          `.quote-button[data-evidence-id="${state.quote}"]`,
+        );
+        state.quote = null;
+        renderQuote();
+        button?.focus();
+        emit('quote', { id: null });
+      });
+      const chip = node('div', 'quote-chip');
+      const text = node('span', 'quote-text');
+      text.append(node('b', '', `已引用${clue.name}`), node('span', '', clue.text));
+      chip.append(text, clear);
+      elements.activeQuote.replaceChildren(
+        chip,
+        node('p', 'quote-note', '随下一次发问一起发出，换频道也带着。'),
+      );
+    }
+
+    function renderEvidence(freshId = null) {
+      const total = Object.keys(clues).length;
+      if (elements.evidenceCount) elements.evidenceCount.textContent = `${state.evidence.size} / ${total}`;
+      const slots = [];
+      if (!state.evidence.size) slots.push(node('p', 'evidence-empty', '尚未收到证据。'));
+      while (state.evidence.size + slots.length < total) {
+        const slot = node('div', 'evidence-slot', '待取证');
+        slot.setAttribute('aria-hidden', 'true');
+        slots.push(slot);
+      }
+      const cards = [...state.evidence].map((id) => {
+        const clue = clues[id];
+        const card = node('article', 'evidence-card');
+        card.dataset.clue = id;
+        if (id === freshId) card.classList.add('is-new');
+        const quote = node('button', 'quote-button', '引用');
+        quote.type = 'button';
+        quote.dataset.evidenceId = id;
+        quote.setAttribute('aria-label', `引用${clue.name}`);
+        quote.addEventListener('click', () => {
+          if (!canCall()) return;
+          state.quote = state.quote === id ? null : id;
+          setRadioFeedback();
+          renderQuote();
+          if (state.quote && window.matchMedia('(max-width: 760px)').matches) {
+            elements.activeQuote.scrollIntoView({ block: 'nearest' });
+          }
+          emit('quote', { id: state.quote });
+        });
+        const meta = node('div', 'evidence-meta');
+        meta.append(node('span', 'evidence-name', clue.name), node('span', 'evidence-source', clue.source));
+        if (clue.code) meta.append(lampCode(clue.code));
+        card.append(meta, node('p', 'evidence-text', clue.text), quote);
+        return card;
+      });
+      elements.evidenceList.replaceChildren(...cards, ...slots);
+    }
+
+    // 已取得的记录标到地图上：档案给出各站灯号，维修单给出供电。结论仍由玩家自己下。
+    function renderMapFacts() {
+      const archive = state.evidence.has('archive') ? clues.archive.marks : null;
+      const outage = state.evidence.has('outage') ? clues.outage.marks : null;
+      mapButtons.forEach((button) => {
+        const holder = button.querySelector('[data-point-facts]');
+        if (!holder) return;
+        const id = button.dataset.location;
+        const facts = [];
+        if (archive) {
+          const fact = node('span', 'fact fact-code');
+          fact.append(lampCode(archive[id].code), node('span', 'fact-text', archive[id].label));
+          facts.push(fact);
+        }
+        if (outage) facts.push(node('span', `fact fact-power is-${outage[id].power}`, outage[id].label));
+        holder.replaceChildren(...facts);
+      });
+      if (!elements.mapWitness) return;
+      const seen = state.evidence.has('signal');
+      elements.mapWitness.hidden = !seen;
+      elements.mapWitness.replaceChildren();
+      if (seen) {
+        elements.mapWitness.append(
+          node('span', 'witness-label', '求救者眼前'),
+          lampCode(clues.signal.code),
+          node('span', 'witness-text', clues.signal.codeLabel),
+        );
+      }
+    }
+
+    function completeCall(prompt, button, question = prompt.question, viaModel = false) {
+      if (!canCall()) return false;
+      if (prompt.needsQuote && state.quote !== prompt.needsQuote) {
+        setRadioFeedback(state.evidence.has(prompt.needsQuote)
+          ? '先引用求救证词，再查询灯号。'
+          : '先引用求救证词，再查询灯号。证据板上还没有这条证词，得先向求救者问到。');
+        emit('denied', { reason: 'quote', needs: prompt.needsQuote, held: state.evidence.has(prompt.needsQuote) });
+        return false;
+      }
+      const gotNewClue = Boolean(prompt.clue) && !state.evidence.has(prompt.clue);
+      state.calls.push({
+        speaker: channels[state.channel].name,
+        channel: state.channel,
+        clock: callTime(state.calls.length + 1),
+        message: prompt.reply,
+        question,
+        heard: viaModel ? prompt.topic : null,
+        gain: prompt.clue ? clues[prompt.clue].name : null,
+        fresh: gotNewClue,
+      });
+      if (gotNewClue) {
+        state.evidence.add(prompt.clue);
+        renderEvidence(prompt.clue);
+        renderMapFacts();
+      }
+      state.quote = null;
+      setRadioFeedback();
+      renderQuote();
+      renderTransmission();
+      const wasFocused = document.activeElement === button;
+      updateCallControls();
+      if (!canCall() && wasFocused) {
+        (canDispatch() ? elements.dispatchButton : mapButtons[0]).focus();
+      }
+      emit('call', {
+        channel: state.channel,
+        clue: gotNewClue ? prompt.clue : null,
+        remaining: remaining(),
+        length: prompt.reply.length,
+      });
+      return true;
+    }
+
+    function renderMap() {
+      mapButtons.forEach((button) => {
+        const id = button.dataset.location;
+        const dispatched = state.outcome?.target === id;
+        const correct = Boolean(state.outcome && id === solution);
+        const excluded = state.excluded.has(id) && !correct;
+        const status = [
+          dispatched && '派车点',
+          correct && '正确地点',
+          excluded && '已排除',
+        ].filter(Boolean).join('，');
+        button.setAttribute('aria-pressed', String(state.selected === id));
+        button.setAttribute('aria-label', [locations[id], status].filter(Boolean).join('，'));
+        button.classList.toggle('is-excluded', excluded);
+        button.classList.toggle('is-correct', correct);
+        button.classList.toggle('is-dispatched', dispatched);
+        // 结算时，真正的那盏灯按求救者看到的节奏亮在地图上。
+        if (correct) button.dataset.lamp = clues.signal.code;
+        else delete button.dataset.lamp;
+        button.disabled = Boolean(state.outcome);
+        const marker = button.querySelector('[data-point-status]');
+        if (marker) {
+          // 地图上只放一个短标签，完整状态仍在 aria-label 里。
+          const tag = correct ? '正确地点' : dispatched ? '派车点' : excluded ? '已排除' : '';
+          marker.hidden = !tag;
+          marker.textContent = tag;
+        }
+      });
+
+      const selectedName = locations[state.selected];
+      const selectedExcluded = state.excluded.has(state.selected);
+      elements.excludeButton.hidden = !selectedName || Boolean(state.outcome);
+      setButtonLabel(elements.excludeButton, selectedExcluded ? '取消排除' : '标记排除');
+      setButtonLabel(elements.dispatchButton, selectedName ? `派车至${selectedName}` : '派车');
+      elements.dispatchButton.disabled = !canDispatch();
+      if (elements.mapFeedback) {
+        let feedback = '';
+        if (state.outcome) {
+          feedback = `救援车已派往${locations[state.outcome.target]}。`;
+        } else {
+          if (!selectedName) feedback = '选择派车地点';
+          if (selectedExcluded) feedback = '取消排除后可以派车。';
+        }
+        elements.mapFeedback.textContent = feedback;
+      }
+    }
+
+    function openDispatch() {
+      if (!canDispatch() || elements.dialog.open) return;
+      elements.dialogTitle.textContent = `派车至${locations[state.selected]}？`;
+      elements.dialogCopy.textContent = hasFullEvidence()
+        ? '派车后本局结束。'
+        : '目前证据不足，仍可派车。';
+      elements.dialog.showModal();
+      elements.cancelDispatch.focus();
+    }
+
+    function renderOutcome() {
+      const result = state.outcome;
+      const place = locations[solution];
+      const headingText = result.correct
+        ? result.fullEvidence ? `救援抵达${place}` : '救援抵达，证据不足'
+        : '派车地点错误';
+      const heading = node('h2', 'outcome-title', headingText);
+      heading.tabIndex = -1;
+      const used = state.calls.length;
+      const explanation = result.correct
+        ? result.fullEvidence ? `你用 ${used} 次通话锁定了地点，两处排除都有记录可查。` : `你选中了${place}，派车时还缺少完整的排查记录。`
+        : `救援车开往${locations[result.target]}。求救者在${place}。`;
+      const verdict = result.correct ? (result.fullEvidence ? '证据充分' : '证据不足') : '地点错误';
+      const eyebrow = node('p', 'outcome-eyebrow');
+      eyebrow.append(
+        node('span', '', `结案 · 派车至${locations[result.target]}`),
+        node('span', 'outcome-stamp', verdict),
+      );
+      const proof = node('ul', 'outcome-evidence');
+      scene.proofs.forEach(([id, text]) => {
+        const held = state.evidence.has(id);
+        const item = node('li', held ? 'is-held' : 'is-missed');
+        item.append(node('span', 'proof-text', text), node('span', 'proof-tag', held ? '已取得' : '未取得'));
+        proof.append(item);
+      });
+      const stats = node('p', 'outcome-stats');
+      stats.append(
+        node('span', '', `通话 ${used} / ${callLimit}`),
+        node('span', '', `证据 ${state.evidence.size} / ${Object.keys(clues).length}`),
+      );
+      if (shift.cases > 1) stats.append(node('span', '', `本班救出 ${shift.saved} / ${shift.cases}`));
+      // 「下一通来电」发一个新案子；「重玩」还是这一案，从头再来。
+      const next = node('button', 'next-case-button', '下一通来电');
+      next.type = 'button';
+      next.addEventListener('click', () => reset(true, true));
+      const replay = node('button', 'replay-button', '重玩');
+      replay.type = 'button';
+      replay.addEventListener('click', () => reset(true));
+      const actions = node('div', 'outcome-actions');
+      actions.append(next, replay);
+      elements.outcome.replaceChildren(eyebrow, heading);
+      if (explanation) elements.outcome.append(node('p', 'outcome-copy', explanation));
+      elements.outcome.append(proof, stats, actions);
+      elements.outcome.classList.toggle('is-success', result.correct);
+      elements.outcome.classList.toggle('is-failure', !result.correct);
+      elements.outcome.hidden = false;
+      heading.focus();
+    }
+
+    function dispatch() {
+      if (!canDispatch()) return;
+      state.outcome = {
+        target: state.selected,
+        correct: state.selected === solution,
+        fullEvidence: hasFullEvidence(),
+      };
+      state.quote = null;
+      if (!scene.settled) {
+        scene.settled = true;
+        shift.cases += 1;
+        if (state.outcome.correct) shift.saved += 1;
+      }
+      setRadioFeedback();
+      elements.dialog.close();
+      root.dataset.phase = 'outcome';
+      updateCallControls();
+      renderQuote();
+      renderMap();
+      renderOutcome();
+      // 结算已同步写入。表现层收到事件后可以先播派车动画，再露出结果。
+      emit('outcome', { ...state.outcome });
+    }
+
+    function reset(moveFocus = false, fresh = false) {
+      state?.pendingCall?.abort();
+      composing = false;
+      ignoreCompositionSubmit = false;
+      if (fresh) {
+        scene = buildCase(dealCase(scene.spec));
+        ({ solution, clues, channels } = scene);
+        shift.number += 1;
+      }
+      if (elements.caseNumber) {
+        elements.caseNumber.hidden = shift.number < 2;
+        elements.caseNumber.textContent = ` · 第 ${shift.number} 通来电`;
+      }
+      state = {
+        channel: 'caller',
+        calls: [],
+        evidence: new Set(),
+        quote: null,
+        selected: null,
+        excluded: new Set(),
+        outcome: null,
+        pendingCall: null,
+      };
+      if (elements.freeQuestion) elements.freeQuestion.value = '';
+      setRadioFeedback();
+      elements.history.open = false;
+      elements.outcome.hidden = true;
+      elements.outcome.classList.remove('is-success', 'is-failure');
+      elements.outcome.replaceChildren();
+      root.dataset.phase = 'play';
+      renderTransmission();
+      renderPresets();
+      updateCallControls();
+      renderEvidence();
+      renderMapFacts();
+      renderQuote();
+      renderMap();
+      emit('reset', { replay: moveFocus, fresh });
+      if (moveFocus) channelButtons.find((button) => button.dataset.channel === 'caller')?.focus({ preventScroll: true });
+    }
+
+    channelButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        if (state.pendingCall || button.dataset.channel === state.channel) return;
+        state.channel = button.dataset.channel;
+        setRadioFeedback();
+        renderPresets();
+        updateCallControls();
+        emit('channel', { channel: state.channel });
+      });
+    });
+    mapButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        if (state.outcome) return;
+        state.selected = button.dataset.location;
+        renderMap();
+        emit('select', { location: state.selected });
+      });
+    });
+    elements.excludeButton.addEventListener('click', () => {
+      if (!state.selected || state.outcome) return;
+      if (!state.excluded.delete(state.selected)) {
+        state.excluded.add(state.selected);
+      }
+      renderMap();
+      emit('exclude', { location: state.selected, excluded: state.excluded.has(state.selected) });
+    });
+    elements.dispatchButton.addEventListener('click', openDispatch);
+    elements.cancelDispatch.addEventListener('click', (event) => {
+      event.preventDefault();
+      elements.dialog.close();
+    });
+    elements.confirmDispatch.addEventListener('click', (event) => {
+      event.preventDefault();
+      dispatch();
+    });
+    elements.dialog.addEventListener('close', () => {
+      if (canDispatch()) elements.dispatchButton.focus();
+    });
+    if (elements.freeCallForm) {
+      elements.radioStatus.setAttribute('aria-live', 'polite');
+      elements.freeCallForm.addEventListener('submit', submitFreeCall);
+      elements.freeQuestion.addEventListener('compositionstart', () => { composing = true; });
+      elements.freeQuestion.addEventListener('compositionend', () => { composing = false; });
+      elements.freeQuestion.addEventListener('keydown', (event) => {
+        if ((event.key === 'Enter' || event.keyCode === 229) && (composing || event.isComposing || event.keyCode === 229)) {
+          ignoreCompositionSubmit = true;
+          window.setTimeout(() => { ignoreCompositionSubmit = false; }, 0);
+        }
+      });
+    }
+    reset();
+    detectFreeCall();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+})();
+  </script>
+</body>
+</html>

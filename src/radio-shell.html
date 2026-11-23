@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-Hans" data-phase="play">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17191b">
+  <meta name="description" content="暴雨夜的调度台。五次通话，一辆车，一个地点。">
+  <title>末班电台 · 雨夜红灯</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317191b'/%3E%3Cpath d='M10 10a8.5 8.5 0 000 12M22 10a8.5 8.5 0 010 12' fill='none' stroke='%23ffc463' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='3.6' fill='%23ff4f3f'/%3E%3C/svg%3E">
+  <style>
+/* INLINE_STYLES */
+  </style>
+</head>
+<body>
+  <div class="desk" id="desk">
+    <header class="masthead">
+      <div class="identity">
+        <div class="station-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8.2 8.2a5.4 5.4 0 000 7.6M15.8 8.2a5.4 5.4 0 010 7.6M5.3 5.3a9.5 9.5 0 000 13.4M18.7 5.3a9.5 9.5 0 010 13.4"/><circle class="station-lamp" cx="12" cy="12" r="2.2" stroke="none"/></svg>
+        </div>
+        <h1>末班电台</h1>
+        <p class="shift">夜班调度台<span data-case-number hidden></span></p>
+      </div>
+      <div class="masthead-tools">
+        <button id="sound-toggle" type="button" class="icon-button" aria-pressed="true" aria-label="声音" title="声音">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.6v4.8h3.4L12 18V6L7.4 9.6H4z"/><path class="sound-on" d="M15.4 9.2a4 4 0 010 5.6M18 6.8a7.4 7.4 0 010 10.4"/><path class="sound-off" d="M16 9.6l4.8 4.8M20.8 9.6L16 14.4"/></svg>
+        </button>
+        <div class="budget">
+          <div class="budget-reading">
+            <span class="budget-label">剩余通话</span>
+            <strong id="call-count" class="budget-number" aria-live="polite">5</strong>
+            <span class="budget-total">/ 5</span>
+          </div>
+          <div id="signal-meter" class="signal-meter" aria-hidden="true">
+            <span class="signal-bar"></span><span class="signal-bar"></span><span class="signal-bar"></span><span class="signal-bar"></span><span class="signal-bar"></span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="desk-grid" tabindex="-1">
+      <section class="panel map-panel" aria-labelledby="case-title">
+        <header class="map-heading">
+          <p class="map-area">河堤巡检线 · <span data-story-clock>22:16:00</span> · 暴雨</p>
+          <h2 id="case-title">雨夜<em>红灯</em></h2>
+        </header>
+        <div class="survey-map" id="survey-map">
+          <canvas id="survey-canvas" aria-hidden="true"></canvas>
+          <div id="map-points" class="map-points" role="group" aria-label="派车候选地点">
+            <button type="button" class="map-point" data-location="gate" aria-pressed="false" aria-describedby="facts-gate">
+              <span class="point-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5V5.5h16v15"/><path d="M8 20.5V11h8v9.5"/><path d="M8 14.2h8M8 17.4h8"/><path d="M12 11V5.5M10 3h4"/></svg></span>
+              <span class="point-tag"><span class="point-label">北闸</span><span class="point-status" data-point-status hidden></span></span>
+              <span class="point-facts" id="facts-gate" data-point-facts></span>
+            </button>
+            <button type="button" class="map-point" data-location="pump" aria-pressed="false" aria-describedby="facts-pump">
+              <span class="point-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="14" r="5"/><circle cx="10" cy="14" r="1.3"/><path d="M10 9V5h8M18 3v4"/><path d="M15 14h6M21 12v4"/><path d="M4 21.2h12"/></svg></span>
+              <span class="point-tag"><span class="point-label">排水泵站</span><span class="point-status" data-point-status hidden></span></span>
+              <span class="point-facts" id="facts-pump" data-point-facts></span>
+            </button>
+            <button type="button" class="map-point" data-location="warehouse" aria-pressed="false" aria-describedby="facts-warehouse">
+              <span class="point-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.2l9-6.2 9 6.2"/><path d="M5.5 10v10.5h13V10"/><path d="M10 20.5V15h4v5.5"/></svg></span>
+              <span class="point-tag"><span class="point-label">旧货栈</span><span class="point-status" data-point-status hidden></span></span>
+              <span class="point-facts" id="facts-warehouse" data-point-facts></span>
+            </button>
+          </div>
+          <div class="map-depot" aria-hidden="true"><span>救援车待命</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 16V7.5h11V16M13.500 10.500h4l3.500 3.500v2h-2"/><circle cx="7" cy="16.500" r="2"/><circle cx="16.500" cy="16.500" r="2"/><path d="M9 16.500h5.500"/></svg></div>
+          <p class="map-witness" data-map-witness hidden></p>
+          <div class="map-north" aria-label="方位朝北"><i aria-hidden="true"></i><span>北</span></div>
+          <ul class="map-legend" aria-hidden="true">
+            <li class="legend-site">候选站房</li>
+            <li class="legend-route">巡检线</li>
+            <li class="legend-river">河道</li>
+          </ul>
+        </div>
+        <div class="dispatch-toolbar">
+          <p id="map-feedback" class="map-feedback" aria-live="polite">选择派车地点</p>
+          <div class="dispatch-actions">
+            <button id="exclude-button" type="button" class="button-quiet" hidden><span data-button-label>标记排除</span></button>
+            <button id="dispatch-button" type="button" class="button-primary button-dispatch" disabled>
+              <span data-button-label>派车</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12h14M13 6.5l5.5 5.5-5.5 5.5"/></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="radio-panel" aria-labelledby="radio-title">
+        <div class="panel rx">
+          <header class="rx-head">
+            <h2 id="radio-title">通信</h2>
+            <div class="dial" aria-hidden="true"><span class="dial-needle"></span></div>
+            <span class="radio-state"><i aria-hidden="true"></i><span id="radio-status">接报</span></span>
+          </header>
+          <div class="rx-screen">
+            <div id="current-transmission" class="transmission" aria-live="polite" aria-atomic="true"></div>
+            <div class="scope-row" aria-hidden="true"><span class="scope-label">呼叫中 · 等对方回话</span><canvas class="scope"></canvas></div>
+          </div>
+          <details id="call-history" class="history" hidden>
+            <summary>通话记录</summary>
+            <ol id="call-history-list"></ol>
+          </details>
+        </div>
+
+        <div class="panel tx">
+          <p class="tx-spent">通话已用完。对照地图和证据板，选一个地点派车。</p>
+          <div class="tx-step">
+            <p class="step-label"><b aria-hidden="true">1</b>呼叫谁</p>
+            <div id="radio-channels" class="channels" role="group" aria-label="通信频道">
+              <button type="button" data-channel="caller" aria-pressed="true" aria-label="求救者" aria-describedby="channel-note-caller"><span class="face" data-face="caller" aria-hidden="true"></span><span class="channel-text"><span class="channel-name">求救者</span><span class="channel-note" id="channel-note-caller">人在现场</span></span></button>
+              <button type="button" data-channel="archive" aria-pressed="false" aria-label="灯号值守员" aria-describedby="channel-note-archive"><span class="face" data-face="archive" aria-hidden="true"></span><span class="channel-text"><span class="channel-name">灯号值守员</span><span class="channel-note" id="channel-note-archive">管灯号档案</span></span></button>
+              <button type="button" data-channel="electric" aria-pressed="false" aria-label="维修电工" aria-describedby="channel-note-electric"><span class="face" data-face="electric" aria-hidden="true"></span><span class="channel-text"><span class="channel-name">维修电工</span><span class="channel-note" id="channel-note-electric">管今晚维修单</span></span></button>
+            </div>
+          </div>
+          <div class="tx-step">
+            <p class="step-label"><b aria-hidden="true">2</b>带上证词<small>可不带</small></p>
+            <div class="quote-dock">
+              <div id="active-quote" class="active-quote" hidden></div>
+              <p class="quote-empty">未带证词。证据板上的记录，点「引用」就能带给对方看。</p>
+            </div>
+          </div>
+          <div class="tx-step">
+            <p class="step-label"><b aria-hidden="true">3</b>问什么</p>
+            <p id="radio-feedback" class="radio-feedback" aria-live="polite" hidden></p>
+            <form id="free-call-form" class="free-call" hidden>
+              <input id="free-question" type="text" aria-label="自由提问" placeholder="向当前频道提问" maxlength="200" enterkeyhint="send" autocomplete="off" required>
+              <button id="free-call-button" type="submit" class="button-primary">发问</button>
+            </form>
+            <p id="free-call-notice" class="free-call-notice" hidden>自由提问暂不可用，可用下方的预设问题。</p>
+            <h3 class="prompts-label">或用预设问题</h3>
+            <div id="prompt-list" class="presets" role="group" aria-label="预设问题"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel evidence-panel" aria-labelledby="evidence-title">
+        <header class="evidence-heading">
+          <h2 id="evidence-title">证据板</h2>
+          <span class="evidence-count" data-evidence-count aria-hidden="true"></span>
+        </header>
+        <div id="evidence-list" class="evidence-list" aria-label="已取得的证据"></div>
+      </section>
+
+      <section id="outcome" class="outcome" aria-label="派车结果" hidden></section>
+    </main>
+  </div>
+
+  <dialog id="dispatch-dialog" aria-labelledby="dispatch-dialog-title" aria-describedby="dispatch-dialog-copy">
+    <p class="dialog-eyebrow" aria-hidden="true">派车单 · 仅此一辆</p>
+    <h2 id="dispatch-dialog-title">确认派车</h2>
+    <p id="dispatch-dialog-copy"></p>
+    <div class="dialog-actions">
+      <button id="cancel-dispatch" type="button" class="button-quiet" autofocus>继续核对</button>
+      <button id="confirm-dispatch" type="button" class="button-primary">确认派车</button>
+    </div>
+  </dialog>
+
+  <div id="intro" class="intro" role="dialog" aria-modal="true" aria-labelledby="intro-title" aria-describedby="intro-brief" hidden>
+    <canvas class="intro-rain" aria-hidden="true"></canvas>
+    <div class="intro-card">
+      <p class="intro-eyebrow">末班电台 · 第一案</p>
+      <h2 id="intro-title">雨夜<em>红灯</em></h2>
+      <p id="intro-brief" class="intro-brief">暴雨夜，河堤巡检线打来一通求救电话。<br>对方受了伤，说不清自己在哪。</p>
+      <ul class="intro-rules">
+        <li><b>5</b><span>次通话</span></li>
+        <li><b>1</b><span>辆救援车</span></li>
+        <li><b>1</b><span>个地点</span></li>
+      </ul>
+      <button id="answer-call" type="button" class="answer-button"><span class="answer-ring" aria-hidden="true"></span>接听来电</button>
+      <p class="intro-foot">22:16 来电 · 一局约三分钟 · 有声音</p>
+    </div>
+  </div>
+  <script>
+/* INLINE_MAP */
+/* INLINE_STAGE */
+/* INLINE_GAME */
+  </script>
+</body>
+</html>
