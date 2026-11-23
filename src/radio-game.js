@@ -177,6 +177,7 @@
       evidenceCount: document.querySelector('[data-evidence-count]'),
       mapWitness: document.querySelector('[data-map-witness]'),
       caseNumber: document.querySelector('[data-case-number]'),
+      dispatchCheck: document.querySelector('[data-dispatch-check]'),
     };
     const root = document.documentElement;
     const channelButtons = [...byId('radio-channels').querySelectorAll('button[data-channel]')];
@@ -557,6 +558,35 @@
           node('span', 'witness-text', clues.signal.codeLabel),
         );
       }
+      renderCheck();
+    }
+
+    // 派车前核对：选中一处站房后，把求救证词和这一站的两项记录并排放在派车按钮旁。
+    // 只摆已取得的记录，没取得的写「未取得」。记号静止不闪，上下两行对齐，对不对得上由玩家自己看。
+    function renderCheck() {
+      const holder = elements.dispatchCheck;
+      if (!holder) return;
+      const id = state.outcome ? null : state.selected;
+      holder.hidden = !id;
+      holder.closest('.dispatch-toolbar')?.toggleAttribute('data-checking', Boolean(id));
+      holder.replaceChildren();
+      if (!id) return;
+      holder.setAttribute('aria-label', `派车前核对：${locations[id]}`);
+      const list = node('dl', 'check-list');
+      [
+        ['signal', clues.signal.codeLabel, clues.signal.code],
+        ['archive', clues.archive.marks[id].label, clues.archive.marks[id].code],
+        ['outage', clues.outage.marks[id].label, null, clues.outage.marks[id].power],
+      ].forEach(([clue, label, code, power]) => {
+        const held = state.evidence.has(clue);
+        const value = node('dd', held && power ? `check-value is-${power}` : 'check-value');
+        if (held && code) value.append(lampCode(code));
+        value.append(node('span', 'check-text', held ? label : '未取得'));
+        const row = node('div', held ? 'check-row' : 'check-row is-missing');
+        row.append(node('dt', 'check-name', clues[clue].name), value);
+        list.append(row);
+      });
+      holder.append(node('p', 'check-title', `${locations[id]} · 派车前核对`), list);
     }
 
     function completeCall(prompt, button, question = prompt.question, viaModel = false) {
@@ -647,6 +677,7 @@
         }
         elements.mapFeedback.textContent = feedback;
       }
+      renderCheck();
     }
 
     function openDispatch() {
