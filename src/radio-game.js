@@ -79,6 +79,7 @@
               topic: '闪灯节奏',
               question: '门檐灯是怎么闪的？',
               reply: lampCodes[seen].heard,
+              cite: lampCodes[seen].heard.split('。')[0],
               clue: 'signal',
             },
             {
@@ -98,6 +99,7 @@
               topic: '按灯号查档',
               question: '哪些站房用这个灯号？',
               reply: `查到了。${first}和${second}都是${seenName}。${locations[odd]}是${otherName}。`,
+              cite: `${first}和${second}都是${seenName}。${locations[odd]}是${otherName}`,
               needsQuote: 'signal',
               clue: 'archive',
             },
@@ -118,6 +120,7 @@
               topic: '停电记录',
               question: '22:16 哪些门灯断电？',
               reply: `${locations[dark]}门灯 ${from} 到 ${to} 断电，这盏灯没接备用电源。另两处门灯正常供电。`,
+              cite: `${locations[dark]}门灯 ${from} 到 ${to} 断电，这盏灯没接备用电源`,
               clue: 'outage',
             },
             {
@@ -182,7 +185,9 @@
     const root = document.documentElement;
     const channelButtons = [...byId('radio-channels').querySelectorAll('button[data-channel]')];
     const mapButtons = [...byId('map-points').querySelectorAll('button[data-location]')];
-    const signalBars = [...byId('signal-meter').querySelectorAll('.signal-bar')];
+    // 通话灯：顶栏（手机）和电台面板（桌面）各一排，同步亮灭。
+    const lampRows = [...document.querySelectorAll('[data-call-lamps]')].map((row) => [...row.querySelectorAll('.call-lamp')]);
+    const callReadouts = [...document.querySelectorAll('[data-calls-left]')];
     let state;
     let freeCallAvailable = false;
     let composing = false;
@@ -201,12 +206,21 @@
     }
 
     // 逐字显示用。文字一次写入，朗读与 innerText 都拿得到整句。
-    function spell(text) {
+    // cite 是构成证据的那几个字，包进 .cite 里划线，文字本身不变。
+    function spell(text, cite = null) {
       const fragment = document.createDocumentFragment();
+      const from = cite ? text.indexOf(cite) : -1;
+      const to = from < 0 ? -1 : from + cite.length;
+      let mark = null;
       [...text].forEach((character, index) => {
         const glyph = node('span', 'glyph', character);
         glyph.style.setProperty('--i', String(index));
-        fragment.append(glyph);
+        if (index === from) {
+          mark = node('span', 'cite');
+          fragment.append(mark);
+        }
+        if (index === to) mark = null;
+        (mark ?? fragment).append(glyph);
       });
       return fragment;
     }
@@ -271,11 +285,17 @@
       }
       root.dataset.calls = String(callsLeft);
       root.dataset.busy = String(busy);
-      signalBars.forEach((bar, index) => {
-        bar.classList.toggle('is-used', index >= callsLeft);
+      lampRows.forEach((lamps) => lamps.forEach((lamp, index) => {
+        lamp.classList.toggle('is-used', index >= callsLeft);
+        lamp.classList.toggle('is-next', index === callsLeft - 1);
+        lamp.classList.toggle('is-last-used', index === callsLeft);
+      }));
+      callReadouts.forEach((readout) => {
+        if (readout.textContent !== String(callsLeft)) readout.textContent = String(callsLeft);
       });
       channelButtons.forEach((button) => {
         button.setAttribute('aria-pressed', String(button.dataset.channel === state.channel));
+        button.toggleAttribute('data-called', state.calls.some(({ channel }) => channel === button.dataset.channel));
         button.disabled = busy;
       });
       const callButtons = [
@@ -418,7 +438,7 @@
         parts.push(asked);
       }
       const message = node('p', 'transmission-message');
-      message.append(spell(latest.message));
+      message.append(spell(latest.message, latest.cite));
       parts.push(message);
       const notes = [
         latest.heard && ['is-heard', `模型听成 · ${latest.heard}`],
@@ -492,18 +512,20 @@
       );
     }
 
+    // 证据板按本案证据数留好固定空位：没到手的是空框，写着来源；到手的卡落进自己的位置。
     function renderEvidence(freshId = null) {
-      const total = Object.keys(clues).length;
-      if (elements.evidenceCount) elements.evidenceCount.textContent = `${state.evidence.size} / ${total}`;
-      const slots = [];
-      if (!state.evidence.size) slots.push(node('p', 'evidence-empty', '尚未收到证据。'));
-      while (state.evidence.size + slots.length < total) {
-        const slot = node('div', 'evidence-slot', '待取证');
-        slot.setAttribute('aria-hidden', 'true');
-        slots.push(slot);
-      }
-      const cards = [...state.evidence].map((id) => {
+      const ids = Object.keys(clues);
+      if (elements.evidenceCount) elements.evidenceCount.textContent = `${state.evidence.size} / ${ids.length}`;
+      const lead = state.evidence.size ? [] : [node('p', 'evidence-empty', '尚未收到证据。')];
+      const cards = ids.map((id) => {
         const clue = clues[id];
+        if (!state.evidence.has(id)) {
+          const slot = node('div', 'evidence-slot');
+          slot.dataset.slot = id;
+          slot.setAttribute('aria-hidden', 'true');
+          slot.append(node('span', 'slot-source', clue.source), node('span', 'slot-mark', '？'));
+          return slot;
+        }
         const card = node('article', 'evidence-card');
         card.dataset.clue = id;
         if (id === freshId) card.classList.add('is-new');
@@ -527,7 +549,7 @@
         card.append(meta, node('p', 'evidence-text', clue.text), quote);
         return card;
       });
-      elements.evidenceList.replaceChildren(...cards, ...slots);
+      elements.evidenceList.replaceChildren(...lead, ...cards);
     }
 
     // 已取得的记录标到地图上：档案给出各站灯号，维修单给出供电。结论仍由玩家自己下。
@@ -604,6 +626,7 @@
         channel: state.channel,
         clock: callTime(state.calls.length + 1),
         message: prompt.reply,
+        cite: prompt.cite ?? null,
         question,
         heard: viaModel ? prompt.topic : null,
         gain: prompt.clue ? clues[prompt.clue].name : null,

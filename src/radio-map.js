@@ -104,7 +104,7 @@
       pen.lineWidth = 1;
       pen.lineCap = 'round';
       for (const layer of layers) {
-        pen.strokeStyle = `rgba(178, 204, 214, ${layer.alpha})`;
+        pen.strokeStyle = `rgba(170, 196, 228, ${layer.alpha})`;
         pen.beginPath();
         for (const [x, y] of layer.drops ?? []) {
           pen.moveTo(x, y);
@@ -165,43 +165,23 @@
     canvas.height = Math.round(height * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
 
+    // 地图只画陆地、河、巡检线；站房和救援车是页面上的元素。等高线只留 6% 的一点地形感。
     const ground = context.createLinearGradient(0, 0, width, height);
-    ground.addColorStop(0, '#1b2123');
-    ground.addColorStop(0.55, '#171c1e');
-    ground.addColorStop(1, '#1a1f20');
+    ground.addColorStop(0, '#0f1b2b');
+    ground.addColorStop(0.55, '#0d1826');
+    ground.addColorStop(1, '#0c1623');
     context.fillStyle = ground;
     context.fillRect(0, 0, width, height);
 
-    drawGrid();
     drawContourHill(0.03, 0.15, 0.29, 0.4, 12, 1);
     drawContourHill(0.1, 0.85, 0.3, 0.44, 11, 3);
     drawContourHill(0.94, 0.23, 0.27, 0.36, 12, 2);
     drawContourHill(0.85, 0.81, 0.29, 0.44, 13, 4);
     drawRiver();
-    drawStationGlow();
     drawRoutes();
     drawVignette();
     drawSurveyCorners();
     return true;
-  }
-
-  function drawGrid() {
-    const spacing = width < 430 ? 25 : 34;
-    context.lineWidth = 1;
-    for (let x = spacing, line = 1; x < width; x += spacing, line += 1) {
-      context.strokeStyle = line % 4 ? '#93a8a50d' : '#93a8a51c';
-      context.beginPath();
-      context.moveTo(Math.round(x) + 0.5, 0);
-      context.lineTo(Math.round(x) + 0.5, height);
-      context.stroke();
-    }
-    for (let y = spacing, line = 1; y < height; y += spacing, line += 1) {
-      context.strokeStyle = line % 4 ? '#93a8a50d' : '#93a8a51c';
-      context.beginPath();
-      context.moveTo(0, Math.round(y) + 0.5);
-      context.lineTo(width, Math.round(y) + 0.5);
-      context.stroke();
-    }
   }
 
   function drawContourHill(centerX, centerY, extentX, extentY, rings, phase) {
@@ -220,7 +200,7 @@
       }
       context.closePath();
       context.lineWidth = ring % 5 === 0 ? 1 : 0.75;
-      context.strokeStyle = ring % 5 === 0 ? '#9fb0a638' : '#95a59c20';
+      context.strokeStyle = ring % 5 === 0 ? 'rgba(147, 163, 184, 0.06)' : 'rgba(147, 163, 184, 0.04)';
       context.stroke();
     }
   }
@@ -240,16 +220,13 @@
     traceBank(waterShape, eastBank, true);
     waterShape.closePath();
 
-    const water = context.createLinearGradient(width * 0.36, height * 0.9, width * 0.82, height * 0.1);
-    water.addColorStop(0, '#1b3138');
-    water.addColorStop(0.5, '#20414a');
-    water.addColorStop(1, '#1c343c');
-    context.fillStyle = water;
+    // 河和陆地都是蓝的，填色只差一点；真正把河分出来的是下面两条 1.5px 的亮岸线。
+    context.fillStyle = '#16324a';
     context.fill(waterShape);
 
     context.save();
     context.clip(waterShape);
-    for (const [offset, color] of [[-0.023, '#a9d2dc1c'], [0.014, '#a9d2dc2e'], [0.028, '#a9d2dc16']]) {
+    for (const [offset, color] of [[-0.023, 'rgba(120, 178, 214, 0.12)'], [0.014, 'rgba(120, 178, 214, 0.18)'], [0.028, 'rgba(120, 178, 214, 0.1)']]) {
       context.strokeStyle = color;
       context.lineWidth = 0.8;
       context.beginPath();
@@ -265,15 +242,12 @@
     const banks = new Path2D();
     traceBank(banks, westBank);
     traceBank(banks, eastBank);
-    context.lineWidth = 5;
-    context.strokeStyle = '#7fb0bd1a';
-    context.stroke(banks);
-    context.lineWidth = 1;
-    context.strokeStyle = '#8fbccb70';
+    context.lineWidth = 1.5;
+    context.strokeStyle = '#4e8db3';
     context.stroke(banks);
 
     // 河堤的短齿线，朝背水一侧。
-    context.strokeStyle = '#8fbccb3d';
+    context.strokeStyle = 'rgba(78, 141, 179, 0.32)';
     context.lineWidth = 1;
     context.beginPath();
     for (const [bank, side] of [[westBank, -1], [eastBank, -1]]) {
@@ -292,17 +266,6 @@
     context.stroke();
   }
 
-  function drawStationGlow() {
-    for (const [x, y] of Object.values(stations)) {
-      const reach = Math.max(54, Math.min(width, height) * 0.2);
-      const glow = context.createRadialGradient(x * width, y * height, 0, x * width, y * height, reach);
-      glow.addColorStop(0, '#ffc46321');
-      glow.addColorStop(1, '#ffc46300');
-      context.fillStyle = glow;
-      context.fillRect(x * width - reach, y * height - reach, reach * 2, reach * 2);
-    }
-  }
-
   function drawRoutes() {
     context.lineCap = 'round';
     context.lineJoin = 'round';
@@ -312,15 +275,13 @@
         if (point === 0) context.moveTo(x * width, y * height);
         else context.lineTo(x * width, y * height);
       });
+      // 琥珀虚线：底下垫一道陆地色，过河时也断得干净。
       context.lineWidth = 5;
-      context.strokeStyle = '#0e1112cc';
+      context.strokeStyle = 'rgba(11, 21, 34, 0.85)';
       context.stroke();
-      context.lineWidth = 1.7;
-      context.strokeStyle = '#c9a45c8f';
-      context.stroke();
-      context.lineWidth = 0.8;
-      context.strokeStyle = '#ffd995b3';
-      context.setLineDash([2, 6]);
+      context.lineWidth = 1.6;
+      context.strokeStyle = 'rgba(255, 196, 99, 0.72)';
+      context.setLineDash([6, 5]);
       context.stroke();
       context.setLineDash([]);
     }
@@ -328,7 +289,7 @@
     const bridgeStart = [0.535 * width, 0.5315 * height];
     const bridgeEnd = [0.626 * width, 0.538 * height];
     for (const shift of [-3.5, 3.5]) {
-      context.strokeStyle = '#d8d2bc8c';
+      context.strokeStyle = 'rgba(216, 210, 195, 0.6)';
       context.lineWidth = 1;
       context.beginPath();
       context.moveTo(bridgeStart[0], bridgeStart[1] + shift);
@@ -339,8 +300,8 @@
 
   function drawVignette() {
     const shade = context.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.35, width / 2, height / 2, Math.max(width, height) * 0.75);
-    shade.addColorStop(0, '#0c0f1000');
-    shade.addColorStop(1, '#0c0f1099');
+    shade.addColorStop(0, 'rgba(6, 12, 20, 0)');
+    shade.addColorStop(1, 'rgba(6, 12, 20, 0.55)');
     context.fillStyle = shade;
     context.fillRect(0, 0, width, height);
   }
@@ -349,7 +310,7 @@
     const inset = 11;
     const size = 10;
     context.lineWidth = 1;
-    context.strokeStyle = '#c6b69052';
+    context.strokeStyle = 'rgba(147, 163, 184, 0.35)';
     for (const [x, y, xDirection, yDirection] of [
       [inset, inset, 1, 1],
       [width - inset, inset, -1, 1],
@@ -396,7 +357,7 @@
         ripples.splice(index, 1);
         continue;
       }
-      pen.strokeStyle = `rgba(175, 214, 224, ${0.3 * (1 - t)})`;
+      pen.strokeStyle = `rgba(150, 200, 232, ${0.3 * (1 - t)})`;
       pen.beginPath();
       pen.ellipse(ripple.x * width, ripple.y * height, 2 + t * 9, 1 + t * 3.6, 0, 0, Math.PI * 2);
       pen.stroke();
@@ -441,7 +402,7 @@
     // 压暗底图，让车灯亮出来。到站后慢慢放开。
     const settle = drive.arrivedAt ? Math.min(1, (now - drive.arrivedAt) / 900) : 0;
     const dim = Math.min(1, elapsed / 320) * (0.5 - settle * 0.3);
-    pen.fillStyle = `rgba(8, 10, 11, ${dim})`;
+    pen.fillStyle = `rgba(5, 11, 20, ${dim})`;
     pen.fillRect(0, 0, width, height);
 
     let segment = 1;
