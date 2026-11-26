@@ -301,6 +301,7 @@
       const callButtons = [
         ...elements.promptList.querySelectorAll('button'),
         ...elements.evidenceList.querySelectorAll('.quote-button'),
+        ...elements.transmission.querySelectorAll('.reply-quote'),
         ...elements.activeQuote.querySelectorAll('.remove-quote'),
       ];
       callButtons.forEach((button) => {
@@ -420,8 +421,26 @@
       renderMap();
     }
 
+    // 回话下面直接引用这条证词：和证据板上的「引用」是同一件事。只带上证词，打给谁仍由玩家决定。
+    function replyQuote(id, fresh) {
+      const button = node('button', fresh ? 'reply-quote' : 'reply-quote is-known');
+      button.type = 'button';
+      button.dataset.replyQuote = id;
+      const quoted = state.quote === id;
+      button.setAttribute('aria-pressed', String(quoted));
+      button.disabled = !canCall();
+      button.append(
+        node('span', 'reply-quote-action', quoted ? '已引用' : '引用这条证词'),
+        node('span', 'reply-quote-tag', `${fresh ? '新证据' : '证据板已有'} · ${clues[id].name}`),
+      );
+      button.addEventListener('click', () => toggleQuote(id, 'reply'));
+      return button;
+    }
+
     function renderTransmission() {
-      const latest = state.calls.at(-1) ?? opening;
+      // 回看旧回答时显示那一通，其余时候显示最新一通。
+      const review = state.review;
+      const latest = review ? state.calls[review.index] : state.calls.at(-1) ?? opening;
       const head = node('div', 'transmission-head');
       const face = node('span', 'face');
       face.dataset.face = latest.channel;
@@ -431,6 +450,7 @@
         node('span', 'transmission-speaker', latest.speaker),
         node('span', 'transmission-clock', latest.clock),
       );
+      if (review) head.insertBefore(node('span', 'transmission-review', '回看'), head.lastChild);
       const parts = [head];
       if (latest.question) {
         const asked = node('p', 'transmission-question');
@@ -440,13 +460,15 @@
       const message = node('p', 'transmission-message');
       message.append(spell(latest.message, latest.cite));
       parts.push(message);
+      const heard = review ? review.heard : latest.heard;
       const notes = [
-        latest.heard && ['is-heard', `模型听成 · ${latest.heard}`],
-        latest.gain && [latest.fresh ? 'is-gain' : 'is-known', latest.fresh ? `新证据 · ${latest.gain}` : `证据板已有 · ${latest.gain}`],
+        latest.clue && replyQuote(latest.clue, latest.fresh && !review),
+        review && node('span', 'transmission-note is-review', '回看原答 · 未扣通话'),
+        heard && node('span', 'transmission-note is-heard', `模型听成 · ${heard}`),
       ].filter(Boolean);
       if (notes.length) {
-        const footer = node('p', 'transmission-notes');
-        notes.forEach(([kind, label]) => footer.append(node('span', `transmission-note ${kind}`, label)));
+        const footer = node('div', 'transmission-notes');
+        footer.append(...notes);
         parts.push(footer);
       }
       elements.transmission.replaceChildren(...parts);
@@ -463,10 +485,22 @@
       elements.history.hidden = !state.calls.length;
     }
 
+    // 问过的题标「已问」：再点只回看原答，不扣通话。按钮的可访问名称仍是问题原文。
+    function markAsked(button) {
+      if (!button || button.classList.contains('is-asked')) return;
+      button.classList.add('is-asked');
+      const mark = node('span', 'preset-asked', '已问 · 回看');
+      mark.setAttribute('aria-hidden', 'true');
+      button.append(mark);
+      button.setAttribute('aria-description', '已问过，再点回看原答，不扣通话');
+    }
+
     function renderPresets() {
       const buttons = channels[state.channel].prompts.map((prompt) => {
-        const button = node('button', 'preset-button', prompt.question);
+        const button = node('button', 'preset-button');
         button.type = 'button';
+        button.append(node('span', 'preset-question', prompt.question));
+        if (state.asked.has(askKey(state.channel, prompt))) markAsked(button);
         button.disabled = !canCall();
         button.addEventListener('click', () => completeCall(prompt, button));
         return button;
@@ -475,11 +509,28 @@
       if (elements.freeQuestion) elements.freeQuestion.placeholder = `用自己的话问${channels[state.channel].name}`;
     }
 
+    function toggleQuote(id, from) {
+      if (!canCall()) return;
+      state.quote = state.quote === id ? null : id;
+      setRadioFeedback();
+      renderQuote();
+      if (state.quote && window.matchMedia('(max-width: 760px)').matches) {
+        elements.activeQuote.scrollIntoView({ block: 'nearest' });
+      }
+      emit('quote', { id: state.quote, from });
+    }
+
     function renderQuote() {
       elements.evidenceList.querySelectorAll('.quote-button').forEach((button) => {
         const isQuoted = button.dataset.evidenceId === state.quote;
         button.setAttribute('aria-pressed', String(isQuoted));
         button.textContent = isQuoted ? '已引用' : '引用';
+        button.disabled = !canCall();
+      });
+      elements.transmission.querySelectorAll('.reply-quote').forEach((button) => {
+        const isQuoted = button.dataset.replyQuote === state.quote;
+        button.setAttribute('aria-pressed', String(isQuoted));
+        button.querySelector('.reply-quote-action').textContent = isQuoted ? '已引用' : '引用这条证词';
         button.disabled = !canCall();
       });
       elements.activeQuote.hidden = !state.quote;
@@ -494,9 +545,8 @@
       clear.setAttribute('aria-label', `移除引用 ${clue.name}`);
       clear.addEventListener('click', () => {
         if (!canCall()) return;
-        const button = elements.evidenceList.querySelector(
-          `.quote-button[data-evidence-id="${state.quote}"]`,
-        );
+        const button = elements.transmission.querySelector(`.reply-quote[data-reply-quote="${state.quote}"]`)
+          ?? elements.evidenceList.querySelector(`.quote-button[data-evidence-id="${state.quote}"]`);
         state.quote = null;
         renderQuote();
         button?.focus();
@@ -533,16 +583,7 @@
         quote.type = 'button';
         quote.dataset.evidenceId = id;
         quote.setAttribute('aria-label', `引用${clue.name}`);
-        quote.addEventListener('click', () => {
-          if (!canCall()) return;
-          state.quote = state.quote === id ? null : id;
-          setRadioFeedback();
-          renderQuote();
-          if (state.quote && window.matchMedia('(max-width: 760px)').matches) {
-            elements.activeQuote.scrollIntoView({ block: 'nearest' });
-          }
-          emit('quote', { id: state.quote });
-        });
+        quote.addEventListener('click', () => toggleQuote(id, 'board'));
         const meta = node('div', 'evidence-meta');
         meta.append(node('span', 'evidence-name', clue.name), node('span', 'evidence-source', clue.source));
         if (clue.code) meta.append(lampCode(clue.code));
@@ -611,8 +652,27 @@
       holder.append(node('p', 'check-title', `${locations[id]} · 派车前核对`), list);
     }
 
+    // 同一频道的同一问题只算一次：再问就回看原答，不扣通话、不动证词和剧情时间。
+    function askKey(channel, prompt) {
+      return prompt.intent ? `${channel}:${prompt.intent}` : null;
+    }
+
+    function reviewCall(index, button, viaModel, topic) {
+      state.review = { index, heard: viaModel ? topic : null };
+      setRadioFeedback();
+      renderTransmission();
+      renderQuote();
+      const wasFocused = document.activeElement === button;
+      updateCallControls();
+      if (wasFocused) button.focus();
+      emit('review', { channel: state.calls[index].channel, length: state.calls[index].message.length });
+      return true;
+    }
+
     function completeCall(prompt, button, question = prompt.question, viaModel = false) {
       if (!canCall()) return false;
+      const key = askKey(state.channel, prompt);
+      if (key && state.asked.has(key)) return reviewCall(state.asked.get(key), button, viaModel, prompt.topic);
       if (prompt.needsQuote && state.quote !== prompt.needsQuote) {
         setRadioFeedback(state.evidence.has(prompt.needsQuote)
           ? '先引用求救证词，再查询灯号。'
@@ -629,9 +689,14 @@
         cite: prompt.cite ?? null,
         question,
         heard: viaModel ? prompt.topic : null,
-        gain: prompt.clue ? clues[prompt.clue].name : null,
+        clue: prompt.clue ?? null,
         fresh: gotNewClue,
       });
+      state.review = null;
+      if (key) {
+        state.asked.set(key, state.calls.length - 1);
+        markAsked(elements.promptList.children[channels[state.channel].prompts.indexOf(prompt)]);
+      }
       if (gotNewClue) {
         state.evidence.add(prompt.clue);
         renderEvidence(prompt.clue);
@@ -650,6 +715,7 @@
         channel: state.channel,
         clue: gotNewClue ? prompt.clue : null,
         remaining: remaining(),
+        ready: hasFullEvidence(),
         length: prompt.reply.length,
       });
       return true;
@@ -808,6 +874,9 @@
         excluded: new Set(),
         outcome: null,
         pendingCall: null,
+        // 频道:意图 → 第几通。问过的题再点只回看。
+        asked: new Map(),
+        review: null,
       };
       if (elements.freeQuestion) elements.freeQuestion.value = '';
       setRadioFeedback();
@@ -823,7 +892,7 @@
       renderMapFacts();
       renderQuote();
       renderMap();
-      emit('reset', { replay: moveFocus, fresh });
+      emit('reset', { replay: moveFocus, fresh, lamp: clues.signal.code });
       if (moveFocus) channelButtons.find((button) => button.dataset.channel === 'caller')?.focus({ preventScroll: true });
     }
 

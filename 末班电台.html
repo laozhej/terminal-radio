@@ -279,7 +279,16 @@ html[data-calls="1"] .last-call { display: inline-block; }
 .map-point[data-location="warehouse"] { left: 35%; top: 76%; }
 .map-point:focus-visible { outline-offset: 8px; border-radius: 4px; }
 .point-icon { grid-area: icon; position: relative; display: block; width: var(--sil-w); height: var(--sil-h); }
-.station, .chalk { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.station, .chalk, .st-glow, .st-wet { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+/* 像素小屋：外面描一圈 1px 的 --st-line，悬停、选中、结案时跟着变色。 */
+.station.is-pixel {
+  filter: drop-shadow(1px 0 0 var(--st-line)) drop-shadow(-1px 0 0 var(--st-line)) drop-shadow(0 1px 0 var(--st-line)) drop-shadow(0 -1px 0 var(--st-line));
+}
+.st-glow, .st-wet { pointer-events: none; }
+.st-reflect rect { fill: var(--lamp); opacity: 0; }
+.st-wash { opacity: 0; }
+.st-wet .st-halo { fill: #ffd6cc; fill-opacity: 1; filter: drop-shadow(0 0 2px #ff5a48) drop-shadow(0 0 5px #ff5a48); }
+.st-reflect { opacity: .8; }
 .station { transition: opacity .3s; }
 .st-body, .st-leaf, .st-door {
   stroke: var(--st-line);
@@ -547,6 +556,19 @@ html[data-calls="0"] .radio-state i, html[data-phase="outcome"] .radio-state i {
   box-shadow: inset 0 2px 9px #000d;
   overflow: hidden;
 }
+/* 调频窗的背光：平时只是暗暖的一层，有人开口时亮起来，说完再暗回去。 */
+.tuner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 130% at 50% 120%, #ffc46340, #ffc46314 55%, transparent 80%),
+    linear-gradient(180deg, transparent 40%, #ffb2470f);
+  opacity: .45;
+  transition: opacity .6s ease;
+}
+.rx.is-speaking .tuner::before { opacity: 1; }
 .radio-panel:has([data-channel="archive"][aria-pressed="true"]) .tuner { --needle: 50%; }
 .radio-panel:has([data-channel="electric"][aria-pressed="true"]) .tuner { --needle: 83%; }
 .tuner::after {
@@ -598,8 +620,26 @@ html[data-calls="0"] .radio-state i, html[data-phase="outcome"] .radio-state i {
   border-radius: 1px;
   background: var(--amber);
   box-shadow: 0 0 8px var(--amber), 0 0 2px #fff8;
-  transition: left .3s cubic-bezier(.3, 1.3, .5, 1);
+  transition: left .3s cubic-bezier(.3, 1.3, .5, 1), translate .7s cubic-bezier(.25, 1.6, .5, 1);
 }
+/* 有人开口时指针轻颤，说完落回原位。 */
+.rx.is-speaking .dial-needle { translate: 2px 0; animation: needle-quiver .17s linear infinite alternate; }
+/* 接通的一刻：求救者门檐下那盏红灯，按当案证词的节奏映在调频窗玻璃上，闪两轮就散。 */
+.glass-lamp {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse 26% 90% at 72% 40%, #ff5a48b8 0%, #ff5a4852 40%, #ff5a4800 72%),
+    linear-gradient(112deg, transparent 58%, #ff7a6a40 63%, transparent 69%);
+}
+.rx[data-glass="ssl"] { --glass-name: lamp-ssl; --glass-cycle: 2.86s; }
+.rx[data-glass="sll"] { --glass-name: lamp-sll; --glass-cycle: 3.38s; }
+.rx[data-glass="lss"] { --glass-name: lamp-lss; --glass-cycle: 2.86s; }
+.rx[data-glass="lls"] { --glass-name: lamp-lls; --glass-cycle: 3.38s; }
+.rx[data-glass] .glass-lamp { animation: var(--glass-name) var(--glass-cycle) steps(1, end) 2; }
 .radio-panel:has([data-channel="archive"][aria-pressed="true"]) .dial-needle { left: 50%; }
 .radio-panel:has([data-channel="electric"][aria-pressed="true"]) .dial-needle { left: 83%; }
 .scope { position: absolute; left: 3%; bottom: 3px; width: 94%; height: 28px; }
@@ -642,9 +682,40 @@ html[data-busy="true"] .dial-mark { opacity: 0; }
 .transmission-message { font-size: 18px; line-height: 1.75; }
 /* 构成证据的那几个字：琥珀下划线，画在每个字底下，随字一起出现，空格处也连着。 */
 .cite .glyph { background: linear-gradient(var(--amber) 0 0) left bottom / 100% 1.5px no-repeat; }
-.transmission-notes { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; }
+.transmission-notes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 8px; }
 .transmission-note { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .02em; }
 .transmission-note.is-heard::before { content: "↳ "; color: var(--line-strong); }
+.transmission-note.is-review { color: var(--amber); }
+.transmission-review { margin-left: auto; color: var(--amber); font-size: 12px; font-weight: 650; letter-spacing: .1em; }
+.transmission-review + .transmission-clock { margin-left: 0; }
+/* 回话下面的引用：和证据卡底部的「引用」一样是一行文字按钮，琥珀色，因为它能按。 */
+.reply-quote {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  margin-left: -8px;
+  padding: 0 10px 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--amber);
+  font-size: 14px;
+  font-weight: 650;
+  text-align: left;
+  transition: background .15s, border-color .15s;
+}
+.reply-quote-action { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.reply-quote-action::before { content: "↗"; display: inline-block; margin-right: 6px; font-size: 13px; text-decoration: none; }
+.reply-quote-tag { color: var(--muted); font-size: 12px; font-weight: 600; }
+.reply-quote:not(:disabled):hover { border-color: var(--amber-dim); background: var(--amber-surface); }
+.reply-quote[aria-pressed="true"] { border-color: var(--amber-dim); background: var(--amber-surface); }
+.reply-quote[aria-pressed="true"] .reply-quote-action { text-decoration: none; }
+.reply-quote[aria-pressed="true"] .reply-quote-action::before { content: "✓"; }
+.reply-quote:disabled { color: var(--muted); opacity: .6; }
+.reply-quote.is-nudged, .reply-quote.is-wanted { animation: beckon .65s ease-in-out 4 alternate; }
+/* 回看是录音，不逐字打出，整段淡入。 */
+.transmission.is-review { animation: review-in .35s ease-out; }
 .transmission.is-fresh:not(.is-settled) .glyph {
   opacity: 0;
   animation: appear 70ms linear forwards;
@@ -900,6 +971,12 @@ html[data-calls="0"] .channels button { opacity: .4; }
 .preset-button:not(:disabled):active { transform: translateY(1px); }
 .preset-button:disabled { color: var(--muted); border-color: #1f3049; background: #0c1624; }
 .preset-button:disabled::after { border-color: var(--line-strong); }
+.preset-question { min-width: 0; }
+/* 问过的题：虚线框，标「已问 · 回看」，再点不扣通话。 */
+.preset-button.is-asked { border-style: dashed; color: #c9c4b8; }
+.preset-button.is-asked::after { display: none; }
+.preset-asked { flex: none; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; white-space: nowrap; transition: color .15s; }
+.preset-button.is-asked:not(:disabled):hover .preset-asked { color: var(--amber); }
 
 /* ---------- 证据板：固定空位，到手的是纸卡 ---------- */
 .evidence-panel { padding: 12px 16px 18px; }
@@ -1202,12 +1279,14 @@ html[data-intro="leaving"] .evidence-panel { animation-delay: .28s; }
 html[data-phase="dispatching"] .map-depot, html[data-phase="outcome"] .map-depot { opacity: 0; }
 
 /* 结算：真正那座站房的门檐灯亮起来，按求救者看到的节奏闪。 */
-html[data-phase="outcome"] .map-point.is-correct :is(.st-lamp, .st-halo) { animation: lamp-ssl 2.86s steps(1, end) infinite; }
+html[data-phase="outcome"] .map-point.is-correct :is(.st-lamp, .st-halo, .st-wash, .st-reflect rect) { animation: lamp-ssl 2.86s steps(1, end) infinite; }
 html[data-phase="outcome"] .map-point.is-correct .st-lamp { fill: var(--lamp); }
 html[data-phase="outcome"] .map-point.is-correct .st-halo { opacity: 1; }
-html[data-phase="outcome"] .map-point.is-correct[data-lamp="sll"] :is(.st-lamp, .st-halo) { animation: lamp-sll 3.38s steps(1, end) infinite; }
-html[data-phase="outcome"] .map-point.is-correct[data-lamp="lss"] :is(.st-lamp, .st-halo) { animation: lamp-lss 2.86s steps(1, end) infinite; }
-html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, .st-halo) { animation: lamp-lls 3.38s steps(1, end) infinite; }
+html[data-phase="outcome"] .map-point.is-correct[data-lamp="sll"] :is(.st-lamp, .st-halo, .st-wash, .st-reflect rect) { animation: lamp-sll 3.38s steps(1, end) infinite; }
+html[data-phase="outcome"] .map-point.is-correct[data-lamp="lss"] :is(.st-lamp, .st-halo, .st-wash, .st-reflect rect) { animation: lamp-lss 2.86s steps(1, end) infinite; }
+html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, .st-halo, .st-wash, .st-reflect rect) { animation: lamp-lls 3.38s steps(1, end) infinite; }
+/* 倒影：门前积水里几格红光，往下拖出一道，轻轻晃。 */
+html[data-phase="outcome"] .map-point.is-correct .st-reflect { animation: ripple-shift 1.3s steps(1, end) infinite; }
 
 /* 证据卡可以直接拖到「带上证词」。 */
 .evidence-card[draggable="true"] { cursor: grab; }
@@ -1221,6 +1300,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
 /* ---------- 动效 ---------- */
 @keyframes appear { to { opacity: 1; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } }
+@keyframes review-in { from { opacity: .2; } }
 @keyframes slip-in { from { opacity: 0; transform: translateY(-16px) rotate(-1.6deg); } }
 @keyframes land { 0% { transform: scale(.94); } 45% { transform: scale(1.02); } 100% { transform: none; } }
 @keyframes card-land { 0% { opacity: 0; transform: translateY(-10px) scale(.96); } 60% { opacity: 1; transform: translateY(2px) scale(1.015); } 100% { opacity: 1; transform: none; } }
@@ -1245,6 +1325,8 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
 @keyframes flash-long-11 { 0% { opacity: 1; box-shadow: 0 0 8px 1px #ff5a48b0; } 27.27%, 100% { opacity: var(--rest); box-shadow: none; } }
 @keyframes flash-short-13 { 0% { opacity: 1; box-shadow: 0 0 8px 1px #ff5a48b0; } 7.69%, 100% { opacity: var(--rest); box-shadow: none; } }
 @keyframes flash-long-13 { 0% { opacity: 1; box-shadow: 0 0 8px 1px #ff5a48b0; } 23.08%, 100% { opacity: var(--rest); box-shadow: none; } }
+@keyframes needle-quiver { 0% { transform: translateX(-1px) rotate(-.7deg); } 40% { transform: translateX(.6px) rotate(.2deg); } 100% { transform: translateX(1.4px) rotate(.9deg); } }
+@keyframes ripple-shift { 0%, 100% { transform: none; } 50% { transform: translateX(1px); } }
 @keyframes lamp-ssl { 0% { opacity: 1; } 9.09% { opacity: .12; } 18.18% { opacity: 1; } 27.27% { opacity: .12; } 36.36% { opacity: 1; } 63.64%, 100% { opacity: .12; } }
 @keyframes lamp-sll { 0% { opacity: 1; } 7.69% { opacity: .12; } 15.38% { opacity: 1; } 38.46% { opacity: .12; } 46.15% { opacity: 1; } 69.23%, 100% { opacity: .12; } }
 @keyframes lamp-lss { 0% { opacity: 1; } 27.27% { opacity: .12; } 36.36% { opacity: 1; } 45.45% { opacity: .12; } 54.55% { opacity: 1; } 63.64%, 100% { opacity: .12; } }
@@ -1260,6 +1342,9 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
   .beat, .answer-ring, .call-lamp, .map-point .st-lamp, .map-point .st-halo { animation: none !important; }
   .answer-ring { display: none; }
   html[data-phase="outcome"] .map-point.is-correct .st-halo { opacity: .7; }
+  .map-point .st-reflect, .map-point .st-reflect rect, .glass-lamp, .dial-needle { animation: none !important; }
+  html[data-phase="outcome"] .map-point.is-correct :is(.st-reflect rect, .st-wash) { opacity: 1; }
+  .map-point .st-wash { animation: none !important; }
 }
 
 /* ---------- 矮屏幕的桌面：收紧纵向间距 ---------- */
@@ -1484,6 +1569,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
   .channels button { min-height: 56px; padding: 7px 16px 7px 9px; }
   .remove-quote { min-height: 44px; }
   .preset-button { min-height: 48px; }
+  .reply-quote { min-height: 44px; }
   .free-call input, .free-call .button-primary { min-height: 50px; }
   #intro-title { margin-block: 14px 18px; }
   .intro-brief { font-size: 16px; }
@@ -1545,17 +1631,17 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
           <canvas id="survey-canvas" aria-hidden="true"></canvas>
           <div id="map-points" class="map-points" role="group" aria-label="派车候选地点">
             <button type="button" class="map-point" data-location="gate" aria-pressed="false" aria-describedby="facts-gate">
-              <span class="point-icon" aria-hidden="true"><svg class="station" viewBox="0 0 64 44" aria-hidden="true"><path class="st-water" d="M20 35h24v9H20z"/><path class="st-bank" d="M20 35h24"/><path class="st-body" d="M44 42V12h10v30z"/><path class="st-body" d="M18 12V8h38v4z"/><path class="st-body" d="M28 8V2.5h10V8z"/><path class="st-leaf" d="M21 12h22v20H21z"/><path class="st-rib" d="M21 18.5h22M21 25h22M32 12v20"/><path class="st-body" d="M2 42V19l9-5.5 9 5.5v23z"/><path class="st-door" d="M8 42v-9h6v9z"/><circle class="st-halo" cx="11" cy="29.6" r="9"/><circle class="st-lamp" cx="11" cy="29.6" r="2.2"/></svg><svg class="chalk" viewBox="0 0 64 44" aria-hidden="true"><path pathLength="1" d="M9 5.5c6.2 4.6 13.6 10.4 21.4 16.1 8 5.8 17.2 12.4 25.1 18"/><path pathLength="1" d="M55.2 6.4c-7.4 5.1-15.6 11.3-23.7 17.2C24.3 28.8 16.6 34.5 8.6 39.6"/></svg></span>
+              <span class="point-icon" aria-hidden="true"><svg class="chalk" viewBox="0 0 64 44" aria-hidden="true"><path pathLength="1" d="M9 5.5c6.2 4.6 13.6 10.4 21.4 16.1 8 5.8 17.2 12.4 25.1 18"/><path pathLength="1" d="M55.2 6.4c-7.4 5.1-15.6 11.3-23.7 17.2C24.3 28.8 16.6 34.5 8.6 39.6"/></svg></span>
               <span class="point-tag"><span class="point-label">北闸</span><span class="point-status" data-point-status hidden></span></span>
               <span class="point-facts" id="facts-gate" data-point-facts></span>
             </button>
             <button type="button" class="map-point" data-location="pump" aria-pressed="false" aria-describedby="facts-pump">
-              <span class="point-icon" aria-hidden="true"><svg class="station" viewBox="0 0 64 44" aria-hidden="true"><path class="st-body" d="M29 15V3h6v12z"/><path class="st-body" d="M40 29h11a7 7 0 017 7v6h-7v-6H40z"/><path class="st-body" d="M6 42V16h34v26z"/><path class="st-body" d="M4 16v-3h38v3z"/><path class="st-win" d="M24 21h4.5v4.5H24zM32 21h4.5v4.5H32z"/><path class="st-door" d="M12 42v-9.5h7V42z"/><circle class="st-halo" cx="15.5" cy="29.4" r="9"/><circle class="st-lamp" cx="15.5" cy="29.4" r="2.2"/></svg><svg class="chalk" viewBox="0 0 64 44" aria-hidden="true"><path pathLength="1" d="M9 5.5c6.2 4.6 13.6 10.4 21.4 16.1 8 5.8 17.2 12.4 25.1 18"/><path pathLength="1" d="M55.2 6.4c-7.4 5.1-15.6 11.3-23.7 17.2C24.3 28.8 16.6 34.5 8.6 39.6"/></svg></span>
+              <span class="point-icon" aria-hidden="true"><svg class="chalk" viewBox="0 0 64 44" aria-hidden="true"><path pathLength="1" d="M9 5.5c6.2 4.6 13.6 10.4 21.4 16.1 8 5.8 17.2 12.4 25.1 18"/><path pathLength="1" d="M55.2 6.4c-7.4 5.1-15.6 11.3-23.7 17.2C24.3 28.8 16.6 34.5 8.6 39.6"/></svg></span>
               <span class="point-tag"><span class="point-label">排水泵站</span><span class="point-status" data-point-status hidden></span></span>
               <span class="point-facts" id="facts-pump" data-point-facts></span>
             </button>
             <button type="button" class="map-point" data-location="warehouse" aria-pressed="false" aria-describedby="facts-warehouse">
-              <span class="point-icon" aria-hidden="true"><svg class="station" viewBox="0 0 64 44" aria-hidden="true"><path class="st-body" d="M2 42V7l15 8V7l15 8V7l15 8V7l15 8v27z"/><path class="st-win" d="M6 20h5v3.5H6zM15 20h5v3.5h-5zM24 20h5v3.5h-5zM45 18h5v3.5h-5z"/><path class="st-leaf" d="M34 42V24h21v18z"/><path class="st-rib" d="M34 24l21 18M55 24L34 42"/><path class="st-door" d="M8 42v-9h6v9z"/><circle class="st-halo" cx="11" cy="29.6" r="9"/><circle class="st-lamp" cx="11" cy="29.6" r="2.2"/></svg><svg class="chalk" viewBox="0 0 64 44" aria-hidden="true"><path pathLength="1" d="M9 5.5c6.2 4.6 13.6 10.4 21.4 16.1 8 5.8 17.2 12.4 25.1 18"/><path pathLength="1" d="M55.2 6.4c-7.4 5.1-15.6 11.3-23.7 17.2C24.3 28.8 16.6 34.5 8.6 39.6"/></svg></span>
+              <span class="point-icon" aria-hidden="true"><svg class="chalk" viewBox="0 0 64 44" aria-hidden="true"><path pathLength="1" d="M9 5.5c6.2 4.6 13.6 10.4 21.4 16.1 8 5.8 17.2 12.4 25.1 18"/><path pathLength="1" d="M55.2 6.4c-7.4 5.1-15.6 11.3-23.7 17.2C24.3 28.8 16.6 34.5 8.6 39.6"/></svg></span>
               <span class="point-tag"><span class="point-label">旧货栈</span><span class="point-status" data-point-status hidden></span></span>
               <span class="point-facts" id="facts-warehouse" data-point-facts></span>
             </button>
@@ -1595,6 +1681,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
             <canvas class="scope"></canvas>
             <span class="scope-label">呼叫中 · 等对方回话</span>
             <span class="dial-needle"></span>
+            <span class="glass-lamp"></span>
           </div>
           <div class="rx-screen">
             <div id="current-transmission" class="transmission" aria-live="polite" aria-atomic="true"></div>
@@ -1619,7 +1706,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
             <p class="step-label"><b aria-hidden="true">2</b>带上证词<small>可不带</small></p>
             <div class="quote-dock">
               <div id="active-quote" class="active-quote" hidden></div>
-              <p class="quote-empty">未带证词。证据板上的记录，点「引用」就能带给对方看。</p>
+              <p class="quote-empty">未带证词。点回话下面或证据板上的「引用」，就能带给对方看。</p>
             </div>
           </div>
           <div class="tx-step">
@@ -1728,6 +1815,152 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
     [0.554, 0.666, 0.483, 0.727, 0.458, 0.825],
     [0.438, 0.917, 0.43, 0.973, 0.37, 1.06],
   ];
+
+  // ---------- 站房：细像素小屋 ----------
+  // 每座 32×24 格，一个字母一种颜色，画成内联 SVG，替换掉页面里的矢量剪影（粉笔 X 那层留着）。
+  // L 是门檐下那盏灯（沿用 .st-lamp），e 是它在门前积水里的倒影。平时三盏灯一样暗，看不出求救者在哪；
+  // 结案后真正那一座按证词的节奏亮起，由样式表负责。轮廓线用 --st-line 描，选中、结案时跟着变色。
+  const stationPalette = { k: '#050d18', r: '#172b47', R: '#86a6cc', w: '#22385a', W: '#34537a', s: '#182c45', c: '#29425f', C: '#48668b', m: '#1a2f4b', M: '#557aa6', p: '#2a5263', P: '#79aebf', q: '#183746', K: '#b5d2dc', y: '#e7b25e', Y: '#7a6036', o: '#08101a', D: '#36507a', f: '#070d16', b: '#16324a', B: '#4e8db3', g: '#11223a', G: '#22385a', t: '#213656', T: '#3f5f8c' };
+  const stationArt = {
+    gate: [
+      '............kkkkkkkk............',
+      '............kkkkkkkk............',
+      '.kkkkkkkkkk..kMMMMk..kkkkkkkkkk.',
+      '.kRRRRRRRRk..kmmmmk..kRRRRRRRRk.',
+      '..kkkkkkkkkkkkkkkkkkkkkkkkkkkk..',
+      '..ksssssskMMMMMMMMMMMMkssssssk..',
+      '..kCccccckmmmmmmmmmmmmkCccccck..',
+      '..kCccccckkkkkkkkkkkkkkCccccck..',
+      '..kCcyycckkkkKkkkkKkkkkCcsscck..',
+      '..kCcyycckkMMMMMMMMMMkkCcsscck..',
+      '..kCccccckkmkmmkkmmkmkkCcsscck..',
+      '..kCccccckkMkMMkkMMkMkkCcsscck..',
+      '..kCccccckkmkmmkkmmkmkkCccccck..',
+      '..kCffffckkmkmmkkmmkmkkCccccck..',
+      '..kCcLLcckkkkkkkkkkkkkkCccccck..',
+      '..kCDDDDckbBBBBBBBBBBbkCccccck..',
+      '..kCDooDckbBbBbbBbBbBbkCccccck..',
+      '..kCDooDckbbBbbbbBbbbbkCccccck..',
+      '..kCDoYDckbbbbbbbbbbbbkCccccck..',
+      '..kCDooDckbbbbBbbbbbbbkCccccck..',
+      '..kCDooDckbbbbbbbbbBbbkCccccck..',
+      'GGGGGGGGGGbBbbbbbbbbbbGGGGGGGGGG',
+      'ggbBbeebbgbbbbbbBbbbbbgggggggggg',
+      'gggbbebBggbbbbbbbbbbbbgggggggggg',
+    ],
+    pump: [
+      '................kkkkk...........',
+      '.................kWk............',
+      '.................kwk............',
+      '.................kwk............',
+      '..kkkkkkkkkkkkkkkkkkkkkk........',
+      '..kRRRRRRRRRRRRRRRRRRRRk........',
+      '...kkkkkkkkkkkkkkkkkkkk.........',
+      '...kssssssssssssssssssk.........',
+      '...kWwwwwwwwwwwwwwwwwwk.........',
+      '...kWwwwwwyywkkkkkkkkwkkKkkkkkk.',
+      '...kWwwwwwyywkWWWWWWkwkPKPPPPPqk',
+      '...kWwwwwwwwwksssssskwkpKpppppqk',
+      '...kWwwwwwwwwkWWWWWWkwkpKpppppqk',
+      '...kWwffffwwwkkkkkkkkwkpKpppppqk',
+      '...kWwwLLwwwwwwwwwwwwwkqKqppppqk',
+      '...kWwDDDDwwwwwwwwwwwwkkKkPpppqk',
+      '...kWwDooDwwwwwwwwwwwwk...Ppppqk',
+      '...kWwDooDwwwwwwwwwwwwk...Ppppqk',
+      '...kWwDoYDwwwwwwwwwwwwk..KKKKKKK',
+      '...kWwDooDwwwwwwwwwwwwk...Ppppqk',
+      '...kWwDooDwwwwwwwwwwwwk...Ppppqk',
+      'GGGGGGGGGGGGGGGGGGGGGGGGGGPpppqk',
+      'ggggbBbeebbbggggggggggggggPpppqk',
+      'gggggbbebbBgggggggggggggggPpppqk',
+    ],
+    warehouse: [
+      '................................',
+      '................................',
+      '................................',
+      '.kRk....kRk....kRk....kRk.......',
+      '.kYrRk..kYrRk..kYrRk..kYrRk.....',
+      '.kYrrrRkkYrrrRkkYrrrRkkYrrrRk...',
+      '.kYrrrrrkYrrrrrkYrrrrrkYrrrrrRk.',
+      '.kYrrrrrkYrrrrrkYrrrrrkYrrrrrRk.',
+      '.kkkkkkkkkkkkkkkkkkkkkkkkkkkkkk.',
+      '.kssssssssssssssssssssssssssssk.',
+      '.kwwswwwswwwswwwswwwswwwswwwswk.',
+      '.kwwswwwswkkkkwwswwwswwwswwwswk.',
+      '.kwwswwwswkyykwwskkkkkkkkkkwswk.',
+      '.kwwsffffwkyykwwskkTtTtTtTkwswk.',
+      '.kwwswLLswkkkkwwsktktTtTtTkwswk.',
+      '.kwwsDDDDwwwswwwsktTkTtTtTkwswk.',
+      '.kwwsDooDwwwswwwsktTtktTtTkwswk.',
+      '.kwwsDooDwwwswwwsktTtTkTtTkwswk.',
+      '.kwwsDoYDwwwswwwsktTtTtktTkwswk.',
+      '.kwwsDooDwwwswwwsktTtTtTkTkwswk.',
+      '.kwwsDooDwwwswwwsktTtTtTtkkwswk.',
+      'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+      'gggbBbeebbbggggggggggggggggggggg',
+      'ggggbbebbBgggggggggggggggggggggg',
+    ],
+  };
+
+
+  function stationSprite(name, rows) {
+    const base = [];
+    const lamp = [];
+    const reflect = [];
+    let lampX = 0;
+    let lampY = 0;
+    let puddle = null;
+    rows.forEach((row, y) => {
+      for (let x = 0; x < row.length;) {
+        const mark = row[x];
+        let end = x + 1;
+        while (end < row.length && row[end] === mark) end += 1;
+        const cell = `x="${x}" y="${y}" width="${end - x}" height="1"`;
+        const color = stationPalette[mark === 'e' ? 'b' : mark];
+        if (mark === 'L') {
+          lamp.push(`<rect class="st-lamp" ${cell}/>`);
+          lampX = x + (end - x) / 2;
+          lampY = y + 0.5;
+        } else if (color) {
+          base.push(`<rect ${cell} fill="${color}"/>`);
+        }
+        if (mark === 'e') {
+          reflect.push(`<rect ${cell}/>`);
+          puddle ??= [x, y];
+        }
+        x = end;
+      }
+    });
+    // 倒影顺着湿地往下拖几格，越远越淡，画在小屋下方的地图上。
+    if (puddle) {
+      [[0, 2, 2, 0.8], [1, 3, 1, 0.65], [-1, 4, 2, 0.5], [0, 5, 1, 0.42], [1, 6, 1, 0.3], [0, 8, 1, 0.2]].forEach(([dx, dy, span, fade]) => {
+        reflect.push(`<rect x="${puddle[0] + dx}" y="${puddle[1] + dy}" width="${span}" height="1" fill-opacity="${fade}"/>`);
+      });
+    }
+    const width = rows[0].length;
+    const height = rows.length;
+    // 三层：灯晕在小屋后面，小屋本身描轮廓，倒影压在门前积水上。
+    const box = `viewBox="0 0 ${width} ${height}" aria-hidden="true"`;
+    // 灯亮时：屋后一大片红光照着地面和雨，屋前一点灯芯。
+    const wash = `wash-${name}`;
+    const svg = `<svg class="st-glow" ${box}><defs><radialGradient id="${wash}"><stop offset="0" stop-color="#ff5a48" stop-opacity=".7"/>`
+      + `<stop offset=".45" stop-color="#ff5a48" stop-opacity=".26"/><stop offset="1" stop-color="#ff5a48" stop-opacity="0"/></radialGradient></defs>`
+      + `<ellipse class="st-wash" cx="${lampX}" cy="${lampY + 2}" rx="17" ry="13" fill="url(#${wash})"/></svg>`
+      + `<svg class="station is-pixel" ${box} shape-rendering="crispEdges">${base.join('')}${lamp.join('')}</svg>`
+      + `<svg class="st-wet" ${box}><circle class="st-halo" cx="${lampX}" cy="${lampY}" r="1.9"/>`
+      + `<g class="st-reflect" shape-rendering="crispEdges">${reflect.join('')}</g></svg>`;
+    return { svg, lampX: lampX / width, lampY: lampY / height };
+  }
+
+  document.querySelectorAll('.map-point[data-location] .point-icon').forEach((holder) => {
+    const rows = stationArt[holder.closest('.map-point').dataset.location];
+    if (!rows) return;
+    const sprite = stationSprite(holder.closest('.map-point').dataset.location, rows);
+    holder.querySelector('svg.station')?.remove();
+    holder.insertAdjacentHTML('afterbegin', sprite.svg);
+    holder.style.setProperty('--lamp-x', `${(sprite.lampX * 100).toFixed(2)}%`);
+    holder.style.setProperty('--lamp-y', `${(sprite.lampY * 100).toFixed(2)}%`);
+  });
 
   function sampleCurve(points, perSegment) {
     const samples = [];
@@ -1843,6 +2076,9 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
   // ---------- 底图 ----------
   let width = 0;
   let height = 0;
+  const grain = 2;
+  const sketch = document.createElement('canvas');
+  const ink = sketch.getContext('2d');
 
   function drawSurvey() {
     const box = surface.getBoundingClientRect();
@@ -1850,18 +2086,18 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
     width = box.width;
     height = box.height;
 
-    const ratio = pixelRatio();
-    canvas.width = Math.round(width * ratio);
-    canvas.height = Math.round(height * ratio);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    // 先在一张每格 2 像素的小画布上画，再不做平滑地放大，整张地图就是细像素。
+    sketch.width = Math.ceil(width / grain);
+    sketch.height = Math.ceil(height / grain);
+    ink.setTransform(1 / grain, 0, 0, 1 / grain, 0, 0);
 
     // 地图只画陆地、河、巡检线；站房和救援车是页面上的元素。等高线只留 6% 的一点地形感。
-    const ground = context.createLinearGradient(0, 0, width, height);
+    const ground = ink.createLinearGradient(0, 0, width, height);
     ground.addColorStop(0, '#0f1b2b');
     ground.addColorStop(0.55, '#0d1826');
     ground.addColorStop(1, '#0c1623');
-    context.fillStyle = ground;
-    context.fillRect(0, 0, width, height);
+    ink.fillStyle = ground;
+    ink.fillRect(0, 0, width, height);
 
     drawContourHill(0.03, 0.15, 0.29, 0.4, 12, 1);
     drawContourHill(0.1, 0.85, 0.3, 0.44, 11, 3);
@@ -1871,13 +2107,20 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
     drawRoutes();
     drawVignette();
     drawSurveyCorners();
+
+    const ratio = pixelRatio();
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.imageSmoothingEnabled = false;
+    context.drawImage(sketch, 0, 0, sketch.width * grain * ratio, sketch.height * grain * ratio);
     return true;
   }
 
   function drawContourHill(centerX, centerY, extentX, extentY, rings, phase) {
     for (let ring = 1; ring <= rings; ring += 1) {
       const radius = 0.15 + (ring / rings) * 0.85;
-      context.beginPath();
+      ink.beginPath();
       for (let part = 0; part <= 112; part += 1) {
         const direction = (part / 112) * Math.PI * 2;
         const bend = 1 + 0.13 * Math.sin(direction * 3 + phase + ring * 0.16)
@@ -1885,13 +2128,13 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
           + 0.027 * Math.sin(direction * 9 + phase);
         const x = (centerX + radius * extentX * Math.cos(direction) * bend) * width;
         const y = (centerY + radius * extentY * Math.sin(direction) * bend) * height;
-        if (part === 0) context.moveTo(x, y);
-        else context.lineTo(x, y);
+        if (part === 0) ink.moveTo(x, y);
+        else ink.lineTo(x, y);
       }
-      context.closePath();
-      context.lineWidth = ring % 5 === 0 ? 1 : 0.75;
-      context.strokeStyle = ring % 5 === 0 ? 'rgba(147, 163, 184, 0.06)' : 'rgba(147, 163, 184, 0.04)';
-      context.stroke();
+      ink.closePath();
+      ink.lineWidth = ring % 5 === 0 ? 1 : 0.75;
+      ink.strokeStyle = ring % 5 === 0 ? 'rgba(147, 163, 184, 0.06)' : 'rgba(147, 163, 184, 0.04)';
+      ink.stroke();
     }
   }
 
@@ -1911,35 +2154,35 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
     waterShape.closePath();
 
     // 河和陆地都是蓝的，填色只差一点；真正把河分出来的是下面两条 1.5px 的亮岸线。
-    context.fillStyle = '#16324a';
-    context.fill(waterShape);
+    ink.fillStyle = '#16324a';
+    ink.fill(waterShape);
 
-    context.save();
-    context.clip(waterShape);
+    ink.save();
+    ink.clip(waterShape);
     for (const [offset, color] of [[-0.023, 'rgba(120, 178, 214, 0.12)'], [0.014, 'rgba(120, 178, 214, 0.18)'], [0.028, 'rgba(120, 178, 214, 0.1)']]) {
-      context.strokeStyle = color;
-      context.lineWidth = 0.8;
-      context.beginPath();
+      ink.strokeStyle = color;
+      ink.lineWidth = 0.8;
+      ink.beginPath();
       const [[startX, startY], ...curves] = midstream;
-      context.moveTo((startX + offset) * width, startY * height);
+      ink.moveTo((startX + offset) * width, startY * height);
       for (const [handleX1, handleY1, handleX2, handleY2, endX, endY] of curves) {
-        context.bezierCurveTo((handleX1 + offset) * width, handleY1 * height, (handleX2 + offset) * width, handleY2 * height, (endX + offset) * width, endY * height);
+        ink.bezierCurveTo((handleX1 + offset) * width, handleY1 * height, (handleX2 + offset) * width, handleY2 * height, (endX + offset) * width, endY * height);
       }
-      context.stroke();
+      ink.stroke();
     }
-    context.restore();
+    ink.restore();
 
     const banks = new Path2D();
     traceBank(banks, westBank);
     traceBank(banks, eastBank);
-    context.lineWidth = 1.5;
-    context.strokeStyle = '#4e8db3';
-    context.stroke(banks);
+    ink.lineWidth = 2;
+    ink.strokeStyle = '#4e8db3';
+    ink.stroke(banks);
 
     // 河堤的短齿线，朝背水一侧。
-    context.strokeStyle = 'rgba(78, 141, 179, 0.32)';
-    context.lineWidth = 1;
-    context.beginPath();
+    ink.strokeStyle = 'rgba(78, 141, 179, 0.32)';
+    ink.lineWidth = 1;
+    ink.beginPath();
     for (const [bank, side] of [[westBank, -1], [eastBank, -1]]) {
       const samples = sampleCurve(bank, 26);
       for (let index = 1; index < samples.length - 1; index += 1) {
@@ -1949,69 +2192,69 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
         const reach = Math.hypot(tangentX, tangentY) || 1;
         const normalX = (-tangentY / reach) * side;
         const normalY = (tangentX / reach) * side;
-        context.moveTo(x * width + normalX * 3, y * height + normalY * 3);
-        context.lineTo(x * width + normalX * 7.5, y * height + normalY * 7.5);
+        ink.moveTo(x * width + normalX * 3, y * height + normalY * 3);
+        ink.lineTo(x * width + normalX * 7.5, y * height + normalY * 7.5);
       }
     }
-    context.stroke();
+    ink.stroke();
   }
 
   function drawRoutes() {
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
+    ink.lineCap = 'round';
+    ink.lineJoin = 'round';
     for (const route of routes) {
-      context.beginPath();
+      ink.beginPath();
       route.forEach(([x, y], point) => {
-        if (point === 0) context.moveTo(x * width, y * height);
-        else context.lineTo(x * width, y * height);
+        if (point === 0) ink.moveTo(x * width, y * height);
+        else ink.lineTo(x * width, y * height);
       });
       // 琥珀虚线：底下垫一道陆地色，过河时也断得干净。
-      context.lineWidth = 5;
-      context.strokeStyle = 'rgba(11, 21, 34, 0.85)';
-      context.stroke();
-      context.lineWidth = 1.6;
-      context.strokeStyle = 'rgba(255, 196, 99, 0.72)';
-      context.setLineDash([6, 5]);
-      context.stroke();
-      context.setLineDash([]);
+      ink.lineWidth = 6;
+      ink.strokeStyle = 'rgba(11, 21, 34, 0.85)';
+      ink.stroke();
+      ink.lineWidth = 2;
+      ink.strokeStyle = 'rgba(255, 196, 99, 0.85)';
+      ink.setLineDash([8, 6]);
+      ink.stroke();
+      ink.setLineDash([]);
     }
 
     const bridgeStart = [0.535 * width, 0.5315 * height];
     const bridgeEnd = [0.626 * width, 0.538 * height];
     for (const shift of [-3.5, 3.5]) {
-      context.strokeStyle = 'rgba(216, 210, 195, 0.6)';
-      context.lineWidth = 1;
-      context.beginPath();
-      context.moveTo(bridgeStart[0], bridgeStart[1] + shift);
-      context.lineTo(bridgeEnd[0], bridgeEnd[1] + shift);
-      context.stroke();
+      ink.strokeStyle = 'rgba(216, 210, 195, 0.6)';
+      ink.lineWidth = 2;
+      ink.beginPath();
+      ink.moveTo(bridgeStart[0], bridgeStart[1] + shift);
+      ink.lineTo(bridgeEnd[0], bridgeEnd[1] + shift);
+      ink.stroke();
     }
   }
 
   function drawVignette() {
-    const shade = context.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.35, width / 2, height / 2, Math.max(width, height) * 0.75);
+    const shade = ink.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.35, width / 2, height / 2, Math.max(width, height) * 0.75);
     shade.addColorStop(0, 'rgba(6, 12, 20, 0)');
     shade.addColorStop(1, 'rgba(6, 12, 20, 0.55)');
-    context.fillStyle = shade;
-    context.fillRect(0, 0, width, height);
+    ink.fillStyle = shade;
+    ink.fillRect(0, 0, width, height);
   }
 
   function drawSurveyCorners() {
     const inset = 11;
     const size = 10;
-    context.lineWidth = 1;
-    context.strokeStyle = 'rgba(147, 163, 184, 0.35)';
+    ink.lineWidth = 1;
+    ink.strokeStyle = 'rgba(147, 163, 184, 0.35)';
     for (const [x, y, xDirection, yDirection] of [
       [inset, inset, 1, 1],
       [width - inset, inset, -1, 1],
       [inset, height - inset, 1, -1],
       [width - inset, height - inset, -1, -1],
     ]) {
-      context.beginPath();
-      context.moveTo(x, y + yDirection * size);
-      context.lineTo(x, y);
-      context.lineTo(x + xDirection * size, y);
-      context.stroke();
+      ink.beginPath();
+      ink.moveTo(x, y + yDirection * size);
+      ink.lineTo(x, y);
+      ink.lineTo(x + xDirection * size, y);
+      ink.stroke();
     }
   }
 
@@ -2031,14 +2274,23 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
   let onScreen = true;
   let last = 0;
 
+  // 河面的碎雨光：雨点打在水上，一两格亮一下就散。都对齐到地图的像素格。
   function stepRipples(seconds) {
-    rippleDebt += seconds * 7;
+    rippleDebt += seconds * 18;
     while (rippleDebt > 1) {
       rippleDebt -= 1;
       const [x, y] = riverLine[Math.floor(Math.random() * riverLine.length)];
-      if (y > 0.02 && y < 0.98) ripples.push({ x: x + (Math.random() - 0.5) * 0.06, y, age: 0, life: 0.7 + Math.random() * 0.5 });
+      if (y < 0.02 || y > 0.98) continue;
+      const roll = Math.random();
+      ripples.push({
+        x: x + (Math.random() - 0.5) * 0.06,
+        y: y + (Math.random() - 0.5) * 0.02,
+        age: 0,
+        life: 0.3 + Math.random() * 0.55,
+        span: roll < 0.5 ? 1 : roll < 0.85 ? 2 : 3,
+        spark: roll > 0.9,
+      });
     }
-    pen.lineWidth = 1;
     for (let index = ripples.length - 1; index >= 0; index -= 1) {
       const ripple = ripples[index];
       ripple.age += seconds;
@@ -2047,10 +2299,15 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
         ripples.splice(index, 1);
         continue;
       }
-      pen.strokeStyle = `rgba(150, 200, 232, ${0.3 * (1 - t)})`;
-      pen.beginPath();
-      pen.ellipse(ripple.x * width, ripple.y * height, 2 + t * 9, 1 + t * 3.6, 0, 0, Math.PI * 2);
-      pen.stroke();
+      const light = t < 0.25 ? t / 0.25 : (1 - t) / 0.75;
+      const x = Math.round((ripple.x * width) / grain) * grain;
+      const y = Math.round((ripple.y * height) / grain) * grain;
+      pen.fillStyle = `rgba(170, 214, 240, ${0.6 * light})`;
+      pen.fillRect(x, y, ripple.span * grain, grain);
+      if (ripple.spark) {
+        pen.fillStyle = `rgba(210, 236, 250, ${0.5 * light})`;
+        pen.fillRect(x + grain * Math.floor(ripple.span / 2), y - grain, grain, grain * 3);
+      }
     }
   }
 
@@ -2633,11 +2890,24 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
   });
   const boardFold = folder(evidencePanel, document.querySelector('[data-evidence-fold]'), ['展开全文', '收起全文']);
 
+  // ---------- 调频窗上的红光 ----------
+  // 接通时，求救者门檐下那盏灯按当案的节奏映在玻璃上。节奏跟着每局的证词走。
+  let lampCode = null;
+  function glassLamp() {
+    if (!receiver || !lampCode || still.matches) return;
+    delete receiver.dataset.glass;
+    void receiver.offsetWidth;
+    receiver.dataset.glass = lampCode;
+  }
+  receiver?.querySelector('.glass-lamp')?.addEventListener('animationend', () => {
+    delete receiver.dataset.glass;
+  });
+
   // ---------- 逐字回放 ----------
   function replay(length = 0, delay = 0) {
     if (!transmission) return;
     transmission.style.setProperty('--reveal-delay', `${delay}ms`);
-    transmission.classList.remove('is-fresh', 'is-settled');
+    transmission.classList.remove('is-fresh', 'is-settled', 'is-review');
     void transmission.offsetWidth;
     transmission.classList.add('is-fresh');
     if (still.matches) return;
@@ -2706,6 +2976,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       desk.inert = false;
       root.dataset.intro = 'leaving';
       replay(transmission?.textContent.length ?? 0, 620);
+      later('glass', 520, glassLamp);
       window.setTimeout(() => {
         intro.hidden = true;
         stopRain();
@@ -2730,9 +3001,11 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
   document.addEventListener('radio:reset', ({ detail }) => {
     staging += 1;
     firstClueSeen = false;
+    lampCode = detail.lamp ?? null;
     if (radioPanel) radioPanel.inert = false;
     map()?.clear();
     timers.forEach((timer) => window.clearTimeout(timer));
+    if (receiver) delete receiver.dataset.glass;
     document.querySelectorAll('.cite-ghost, .quote-ghost').forEach((ghost) => ghost.remove());
     setSpeaking(false);
     syncClock();
@@ -2740,6 +3013,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
     boardFold.close();
     if (!detail.replay) return;
     replay(transmission?.textContent.length ?? 0, 200);
+    later('glass', 160, glassLamp);
     window.scrollTo({ top: 0, behavior: 'instant' });
     audio.play('answer');
   });
@@ -2756,17 +3030,32 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       later('evidence-cue', 300, () => audio.play('evidence'));
       if (!firstClueSeen) {
         firstClueSeen = true;
-        later('nudge', 900, () => flash(document.querySelector('.quote-empty'), 'is-nudged', 3200));
+        // 第一条证词到手：提示回话下面那个按钮就能引用。
+        later('nudge', 1100, () => flash(transmission?.querySelector('.reply-quote'), 'is-nudged', 2800));
       }
     }
     if (narrow.matches) receiver?.scrollIntoView({ block: 'nearest', behavior: still.matches ? 'auto' : 'smooth' });
+  });
+
+  // 回看旧回答：一段录音，整段淡入，不逐字、不动指针，也不再飞证据条。
+  document.addEventListener('radio:review', () => {
+    audio.play('tune');
+    if (!transmission) return;
+    transmission.classList.remove('is-fresh', 'is-review');
+    void transmission.offsetWidth;
+    transmission.classList.add('is-review');
+    window.clearTimeout(timers.get('speaking-end'));
+    setSpeaking(false);
   });
 
   document.addEventListener('radio:denied', ({ detail }) => {
     audio.play('deny');
     flash(byId('radio-feedback'), 'is-shaking', 500);
     if (detail.reason !== 'quote') return;
-    if (detail.held) flash(document.querySelector(`.quote-button[data-evidence-id="${detail.needs}"]`), 'is-wanted', 2600);
+    if (detail.held) {
+      flash(document.querySelector(`.reply-quote[data-reply-quote="${detail.needs}"]`), 'is-wanted', 2600);
+      flash(document.querySelector(`.quote-button[data-evidence-id="${detail.needs}"]`), 'is-wanted', 2600);
+    }
     else flash(document.querySelector('#radio-channels [data-channel="caller"]'), 'is-suggested', 2600);
   });
 
@@ -2843,7 +3132,10 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       return;
     }
     audio.play('quote');
-    const card = document.querySelector(`.evidence-card[data-clue="${detail.id}"]`);
+    // 从哪里按的就从哪里飞：回话下面的按钮，或证据板上的卡。
+    const card = detail.from === 'reply'
+      ? transmission?.querySelector(`.reply-quote[data-reply-quote="${detail.id}"]`)
+      : document.querySelector(`.evidence-card[data-clue="${detail.id}"]`);
     const dock = byId('active-quote');
     if (!card || !dock) return;
     flash(dock, 'is-landing', 700);
@@ -2855,7 +3147,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
     const ghost = document.createElement('div');
     ghost.className = 'quote-ghost';
     ghost.setAttribute('aria-hidden', 'true');
-    ghost.textContent = card.querySelector('.evidence-name')?.textContent ?? '';
+    ghost.textContent = document.querySelector(`.evidence-card[data-clue="${detail.id}"] .evidence-name`)?.textContent ?? '';
     Object.assign(ghost.style, {
       left: `${from.left + window.scrollX}px`,
       top: `${from.top + window.scrollY}px`,
@@ -3197,6 +3489,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       const callButtons = [
         ...elements.promptList.querySelectorAll('button'),
         ...elements.evidenceList.querySelectorAll('.quote-button'),
+        ...elements.transmission.querySelectorAll('.reply-quote'),
         ...elements.activeQuote.querySelectorAll('.remove-quote'),
       ];
       callButtons.forEach((button) => {
@@ -3316,8 +3609,26 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       renderMap();
     }
 
+    // 回话下面直接引用这条证词：和证据板上的「引用」是同一件事。只带上证词，打给谁仍由玩家决定。
+    function replyQuote(id, fresh) {
+      const button = node('button', fresh ? 'reply-quote' : 'reply-quote is-known');
+      button.type = 'button';
+      button.dataset.replyQuote = id;
+      const quoted = state.quote === id;
+      button.setAttribute('aria-pressed', String(quoted));
+      button.disabled = !canCall();
+      button.append(
+        node('span', 'reply-quote-action', quoted ? '已引用' : '引用这条证词'),
+        node('span', 'reply-quote-tag', `${fresh ? '新证据' : '证据板已有'} · ${clues[id].name}`),
+      );
+      button.addEventListener('click', () => toggleQuote(id, 'reply'));
+      return button;
+    }
+
     function renderTransmission() {
-      const latest = state.calls.at(-1) ?? opening;
+      // 回看旧回答时显示那一通，其余时候显示最新一通。
+      const review = state.review;
+      const latest = review ? state.calls[review.index] : state.calls.at(-1) ?? opening;
       const head = node('div', 'transmission-head');
       const face = node('span', 'face');
       face.dataset.face = latest.channel;
@@ -3327,6 +3638,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
         node('span', 'transmission-speaker', latest.speaker),
         node('span', 'transmission-clock', latest.clock),
       );
+      if (review) head.insertBefore(node('span', 'transmission-review', '回看'), head.lastChild);
       const parts = [head];
       if (latest.question) {
         const asked = node('p', 'transmission-question');
@@ -3336,13 +3648,15 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       const message = node('p', 'transmission-message');
       message.append(spell(latest.message, latest.cite));
       parts.push(message);
+      const heard = review ? review.heard : latest.heard;
       const notes = [
-        latest.heard && ['is-heard', `模型听成 · ${latest.heard}`],
-        latest.gain && [latest.fresh ? 'is-gain' : 'is-known', latest.fresh ? `新证据 · ${latest.gain}` : `证据板已有 · ${latest.gain}`],
+        latest.clue && replyQuote(latest.clue, latest.fresh && !review),
+        review && node('span', 'transmission-note is-review', '回看原答 · 未扣通话'),
+        heard && node('span', 'transmission-note is-heard', `模型听成 · ${heard}`),
       ].filter(Boolean);
       if (notes.length) {
-        const footer = node('p', 'transmission-notes');
-        notes.forEach(([kind, label]) => footer.append(node('span', `transmission-note ${kind}`, label)));
+        const footer = node('div', 'transmission-notes');
+        footer.append(...notes);
         parts.push(footer);
       }
       elements.transmission.replaceChildren(...parts);
@@ -3359,10 +3673,22 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       elements.history.hidden = !state.calls.length;
     }
 
+    // 问过的题标「已问」：再点只回看原答，不扣通话。按钮的可访问名称仍是问题原文。
+    function markAsked(button) {
+      if (!button || button.classList.contains('is-asked')) return;
+      button.classList.add('is-asked');
+      const mark = node('span', 'preset-asked', '已问 · 回看');
+      mark.setAttribute('aria-hidden', 'true');
+      button.append(mark);
+      button.setAttribute('aria-description', '已问过，再点回看原答，不扣通话');
+    }
+
     function renderPresets() {
       const buttons = channels[state.channel].prompts.map((prompt) => {
-        const button = node('button', 'preset-button', prompt.question);
+        const button = node('button', 'preset-button');
         button.type = 'button';
+        button.append(node('span', 'preset-question', prompt.question));
+        if (state.asked.has(askKey(state.channel, prompt))) markAsked(button);
         button.disabled = !canCall();
         button.addEventListener('click', () => completeCall(prompt, button));
         return button;
@@ -3371,11 +3697,28 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       if (elements.freeQuestion) elements.freeQuestion.placeholder = `用自己的话问${channels[state.channel].name}`;
     }
 
+    function toggleQuote(id, from) {
+      if (!canCall()) return;
+      state.quote = state.quote === id ? null : id;
+      setRadioFeedback();
+      renderQuote();
+      if (state.quote && window.matchMedia('(max-width: 760px)').matches) {
+        elements.activeQuote.scrollIntoView({ block: 'nearest' });
+      }
+      emit('quote', { id: state.quote, from });
+    }
+
     function renderQuote() {
       elements.evidenceList.querySelectorAll('.quote-button').forEach((button) => {
         const isQuoted = button.dataset.evidenceId === state.quote;
         button.setAttribute('aria-pressed', String(isQuoted));
         button.textContent = isQuoted ? '已引用' : '引用';
+        button.disabled = !canCall();
+      });
+      elements.transmission.querySelectorAll('.reply-quote').forEach((button) => {
+        const isQuoted = button.dataset.replyQuote === state.quote;
+        button.setAttribute('aria-pressed', String(isQuoted));
+        button.querySelector('.reply-quote-action').textContent = isQuoted ? '已引用' : '引用这条证词';
         button.disabled = !canCall();
       });
       elements.activeQuote.hidden = !state.quote;
@@ -3390,9 +3733,8 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       clear.setAttribute('aria-label', `移除引用 ${clue.name}`);
       clear.addEventListener('click', () => {
         if (!canCall()) return;
-        const button = elements.evidenceList.querySelector(
-          `.quote-button[data-evidence-id="${state.quote}"]`,
-        );
+        const button = elements.transmission.querySelector(`.reply-quote[data-reply-quote="${state.quote}"]`)
+          ?? elements.evidenceList.querySelector(`.quote-button[data-evidence-id="${state.quote}"]`);
         state.quote = null;
         renderQuote();
         button?.focus();
@@ -3429,16 +3771,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
         quote.type = 'button';
         quote.dataset.evidenceId = id;
         quote.setAttribute('aria-label', `引用${clue.name}`);
-        quote.addEventListener('click', () => {
-          if (!canCall()) return;
-          state.quote = state.quote === id ? null : id;
-          setRadioFeedback();
-          renderQuote();
-          if (state.quote && window.matchMedia('(max-width: 760px)').matches) {
-            elements.activeQuote.scrollIntoView({ block: 'nearest' });
-          }
-          emit('quote', { id: state.quote });
-        });
+        quote.addEventListener('click', () => toggleQuote(id, 'board'));
         const meta = node('div', 'evidence-meta');
         meta.append(node('span', 'evidence-name', clue.name), node('span', 'evidence-source', clue.source));
         if (clue.code) meta.append(lampCode(clue.code));
@@ -3507,8 +3840,27 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       holder.append(node('p', 'check-title', `${locations[id]} · 派车前核对`), list);
     }
 
+    // 同一频道的同一问题只算一次：再问就回看原答，不扣通话、不动证词和剧情时间。
+    function askKey(channel, prompt) {
+      return prompt.intent ? `${channel}:${prompt.intent}` : null;
+    }
+
+    function reviewCall(index, button, viaModel, topic) {
+      state.review = { index, heard: viaModel ? topic : null };
+      setRadioFeedback();
+      renderTransmission();
+      renderQuote();
+      const wasFocused = document.activeElement === button;
+      updateCallControls();
+      if (wasFocused) button.focus();
+      emit('review', { channel: state.calls[index].channel, length: state.calls[index].message.length });
+      return true;
+    }
+
     function completeCall(prompt, button, question = prompt.question, viaModel = false) {
       if (!canCall()) return false;
+      const key = askKey(state.channel, prompt);
+      if (key && state.asked.has(key)) return reviewCall(state.asked.get(key), button, viaModel, prompt.topic);
       if (prompt.needsQuote && state.quote !== prompt.needsQuote) {
         setRadioFeedback(state.evidence.has(prompt.needsQuote)
           ? '先引用求救证词，再查询灯号。'
@@ -3525,9 +3877,14 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
         cite: prompt.cite ?? null,
         question,
         heard: viaModel ? prompt.topic : null,
-        gain: prompt.clue ? clues[prompt.clue].name : null,
+        clue: prompt.clue ?? null,
         fresh: gotNewClue,
       });
+      state.review = null;
+      if (key) {
+        state.asked.set(key, state.calls.length - 1);
+        markAsked(elements.promptList.children[channels[state.channel].prompts.indexOf(prompt)]);
+      }
       if (gotNewClue) {
         state.evidence.add(prompt.clue);
         renderEvidence(prompt.clue);
@@ -3546,6 +3903,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
         channel: state.channel,
         clue: gotNewClue ? prompt.clue : null,
         remaining: remaining(),
+        ready: hasFullEvidence(),
         length: prompt.reply.length,
       });
       return true;
@@ -3704,6 +4062,9 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
         excluded: new Set(),
         outcome: null,
         pendingCall: null,
+        // 频道:意图 → 第几通。问过的题再点只回看。
+        asked: new Map(),
+        review: null,
       };
       if (elements.freeQuestion) elements.freeQuestion.value = '';
       setRadioFeedback();
@@ -3719,7 +4080,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
       renderMapFacts();
       renderQuote();
       renderMap();
-      emit('reset', { replay: moveFocus, fresh });
+      emit('reset', { replay: moveFocus, fresh, lamp: clues.signal.code });
       if (moveFocus) channelButtons.find((button) => button.dataset.channel === 'caller')?.focus({ preventScroll: true });
     }
 

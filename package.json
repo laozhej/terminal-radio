@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node 末班电台服务.mjs",
     "test": "node tests/radio-model-server-check.mjs",
-    "test:browser": "node tests/radio-file-smoke.cjs && node tests/radio-model-browser-check.cjs && node tests/radio-shuffle-check.cjs && node tests/radio-dispatch-check.cjs"
+    "test:browser": "node tests/radio-file-smoke.cjs && node tests/radio-model-browser-check.cjs && node tests/radio-shuffle-check.cjs && node tests/radio-dispatch-check.cjs && node tests/radio-console-check.cjs && node tests/radio-art-check.cjs"
   },
   "engines": {
     "node": ">=22"

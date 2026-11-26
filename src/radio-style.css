@@ -269,7 +269,16 @@ html[data-calls="1"] .last-call { display: inline-block; }
 .map-point[data-location="warehouse"] { left: 35%; top: 76%; }
 .map-point:focus-visible { outline-offset: 8px; border-radius: 4px; }
 .point-icon { grid-area: icon; position: relative; display: block; width: var(--sil-w); height: var(--sil-h); }
-.station, .chalk { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.station, .chalk, .st-glow, .st-wet { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+/* 像素小屋：外面描一圈 1px 的 --st-line，悬停、选中、结案时跟着变色。 */
+.station.is-pixel {
+  filter: drop-shadow(1px 0 0 var(--st-line)) drop-shadow(-1px 0 0 var(--st-line)) drop-shadow(0 1px 0 var(--st-line)) drop-shadow(0 -1px 0 var(--st-line));
+}
+.st-glow, .st-wet { pointer-events: none; }
+.st-reflect rect { fill: var(--lamp); opacity: 0; }
+.st-wash { opacity: 0; }
+.st-wet .st-halo { fill: #ffd6cc; fill-opacity: 1; filter: drop-shadow(0 0 2px #ff5a48) drop-shadow(0 0 5px #ff5a48); }
+.st-reflect { opacity: .8; }
 .station { transition: opacity .3s; }
 .st-body, .st-leaf, .st-door {
   stroke: var(--st-line);
@@ -537,6 +546,19 @@ html[data-calls="0"] .radio-state i, html[data-phase="outcome"] .radio-state i {
   box-shadow: inset 0 2px 9px #000d;
   overflow: hidden;
 }
+/* 调频窗的背光：平时只是暗暖的一层，有人开口时亮起来，说完再暗回去。 */
+.tuner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 130% at 50% 120%, #ffc46340, #ffc46314 55%, transparent 80%),
+    linear-gradient(180deg, transparent 40%, #ffb2470f);
+  opacity: .45;
+  transition: opacity .6s ease;
+}
+.rx.is-speaking .tuner::before { opacity: 1; }
 .radio-panel:has([data-channel="archive"][aria-pressed="true"]) .tuner { --needle: 50%; }
 .radio-panel:has([data-channel="electric"][aria-pressed="true"]) .tuner { --needle: 83%; }
 .tuner::after {
@@ -588,8 +610,26 @@ html[data-calls="0"] .radio-state i, html[data-phase="outcome"] .radio-state i {
   border-radius: 1px;
   background: var(--amber);
   box-shadow: 0 0 8px var(--amber), 0 0 2px #fff8;
-  transition: left .3s cubic-bezier(.3, 1.3, .5, 1);
+  transition: left .3s cubic-bezier(.3, 1.3, .5, 1), translate .7s cubic-bezier(.25, 1.6, .5, 1);
 }
+/* 有人开口时指针轻颤，说完落回原位。 */
+.rx.is-speaking .dial-needle { translate: 2px 0; animation: needle-quiver .17s linear infinite alternate; }
+/* 接通的一刻：求救者门檐下那盏红灯，按当案证词的节奏映在调频窗玻璃上，闪两轮就散。 */
+.glass-lamp {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse 26% 90% at 72% 40%, #ff5a48b8 0%, #ff5a4852 40%, #ff5a4800 72%),
+    linear-gradient(112deg, transparent 58%, #ff7a6a40 63%, transparent 69%);
+}
+.rx[data-glass="ssl"] { --glass-name: lamp-ssl; --glass-cycle: 2.86s; }
+.rx[data-glass="sll"] { --glass-name: lamp-sll; --glass-cycle: 3.38s; }
+.rx[data-glass="lss"] { --glass-name: lamp-lss; --glass-cycle: 2.86s; }
+.rx[data-glass="lls"] { --glass-name: lamp-lls; --glass-cycle: 3.38s; }
+.rx[data-glass] .glass-lamp { animation: var(--glass-name) var(--glass-cycle) steps(1, end) 2; }
 .radio-panel:has([data-channel="archive"][aria-pressed="true"]) .dial-needle { left: 50%; }
 .radio-panel:has([data-channel="electric"][aria-pressed="true"]) .dial-needle { left: 83%; }
 .scope { position: absolute; left: 3%; bottom: 3px; width: 94%; height: 28px; }
@@ -632,9 +672,40 @@ html[data-busy="true"] .dial-mark { opacity: 0; }
 .transmission-message { font-size: 18px; line-height: 1.75; }
 /* 构成证据的那几个字：琥珀下划线，画在每个字底下，随字一起出现，空格处也连着。 */
 .cite .glyph { background: linear-gradient(var(--amber) 0 0) left bottom / 100% 1.5px no-repeat; }
-.transmission-notes { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; }
+.transmission-notes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 8px; }
 .transmission-note { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .02em; }
 .transmission-note.is-heard::before { content: "↳ "; color: var(--line-strong); }
+.transmission-note.is-review { color: var(--amber); }
+.transmission-review { margin-left: auto; color: var(--amber); font-size: 12px; font-weight: 650; letter-spacing: .1em; }
+.transmission-review + .transmission-clock { margin-left: 0; }
+/* 回话下面的引用：和证据卡底部的「引用」一样是一行文字按钮，琥珀色，因为它能按。 */
+.reply-quote {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  margin-left: -8px;
+  padding: 0 10px 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--amber);
+  font-size: 14px;
+  font-weight: 650;
+  text-align: left;
+  transition: background .15s, border-color .15s;
+}
+.reply-quote-action { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.reply-quote-action::before { content: "↗"; display: inline-block; margin-right: 6px; font-size: 13px; text-decoration: none; }
+.reply-quote-tag { color: var(--muted); font-size: 12px; font-weight: 600; }
+.reply-quote:not(:disabled):hover { border-color: var(--amber-dim); background: var(--amber-surface); }
+.reply-quote[aria-pressed="true"] { border-color: var(--amber-dim); background: var(--amber-surface); }
+.reply-quote[aria-pressed="true"] .reply-quote-action { text-decoration: none; }
+.reply-quote[aria-pressed="true"] .reply-quote-action::before { content: "✓"; }
+.reply-quote:disabled { color: var(--muted); opacity: .6; }
+.reply-quote.is-nudged, .reply-quote.is-wanted { animation: beckon .65s ease-in-out 4 alternate; }
+/* 回看是录音，不逐字打出，整段淡入。 */
+.transmission.is-review { animation: review-in .35s ease-out; }
 .transmission.is-fresh:not(.is-settled) .glyph {
   opacity: 0;
   animation: appear 70ms linear forwards;
@@ -890,6 +961,12 @@ html[data-calls="0"] .channels button { opacity: .4; }
 .preset-button:not(:disabled):active { transform: translateY(1px); }
 .preset-button:disabled { color: var(--muted); border-color: #1f3049; background: #0c1624; }
 .preset-button:disabled::after { border-color: var(--line-strong); }
+.preset-question { min-width: 0; }
+/* 问过的题：虚线框，标「已问 · 回看」，再点不扣通话。 */
+.preset-button.is-asked { border-style: dashed; color: #c9c4b8; }
+.preset-button.is-asked::after { display: none; }
+.preset-asked { flex: none; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; white-space: nowrap; transition: color .15s; }
+.preset-button.is-asked:not(:disabled):hover .preset-asked { color: var(--amber); }
 
 /* ---------- 证据板：固定空位，到手的是纸卡 ---------- */
 .evidence-panel { padding: 12px 16px 18px; }
@@ -1192,12 +1269,14 @@ html[data-intro="leaving"] .evidence-panel { animation-delay: .28s; }
 html[data-phase="dispatching"] .map-depot, html[data-phase="outcome"] .map-depot { opacity: 0; }
 
 /* 结算：真正那座站房的门檐灯亮起来，按求救者看到的节奏闪。 */
-html[data-phase="outcome"] .map-point.is-correct :is(.st-lamp, .st-halo) { animation: lamp-ssl 2.86s steps(1, end) infinite; }
+html[data-phase="outcome"] .map-point.is-correct :is(.st-lamp, .st-halo, .st-wash, .st-reflect rect) { animation: lamp-ssl 2.86s steps(1, end) infinite; }
 html[data-phase="outcome"] .map-point.is-correct .st-lamp { fill: var(--lamp); }
 html[data-phase="outcome"] .map-point.is-correct .st-halo { opacity: 1; }
-html[data-phase="outcome"] .map-point.is-correct[data-lamp="sll"] :is(.st-lamp, .st-halo) { animation: lamp-sll 3.38s steps(1, end) infinite; }
-html[data-phase="outcome"] .map-point.is-correct[data-lamp="lss"] :is(.st-lamp, .st-halo) { animation: lamp-lss 2.86s steps(1, end) infinite; }
-html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, .st-halo) { animation: lamp-lls 3.38s steps(1, end) infinite; }
+html[data-phase="outcome"] .map-point.is-correct[data-lamp="sll"] :is(.st-lamp, .st-halo, .st-wash, .st-reflect rect) { animation: lamp-sll 3.38s steps(1, end) infinite; }
+html[data-phase="outcome"] .map-point.is-correct[data-lamp="lss"] :is(.st-lamp, .st-halo, .st-wash, .st-reflect rect) { animation: lamp-lss 2.86s steps(1, end) infinite; }
+html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, .st-halo, .st-wash, .st-reflect rect) { animation: lamp-lls 3.38s steps(1, end) infinite; }
+/* 倒影：门前积水里几格红光，往下拖出一道，轻轻晃。 */
+html[data-phase="outcome"] .map-point.is-correct .st-reflect { animation: ripple-shift 1.3s steps(1, end) infinite; }
 
 /* 证据卡可以直接拖到「带上证词」。 */
 .evidence-card[draggable="true"] { cursor: grab; }
@@ -1211,6 +1290,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
 /* ---------- 动效 ---------- */
 @keyframes appear { to { opacity: 1; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } }
+@keyframes review-in { from { opacity: .2; } }
 @keyframes slip-in { from { opacity: 0; transform: translateY(-16px) rotate(-1.6deg); } }
 @keyframes land { 0% { transform: scale(.94); } 45% { transform: scale(1.02); } 100% { transform: none; } }
 @keyframes card-land { 0% { opacity: 0; transform: translateY(-10px) scale(.96); } 60% { opacity: 1; transform: translateY(2px) scale(1.015); } 100% { opacity: 1; transform: none; } }
@@ -1235,6 +1315,8 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
 @keyframes flash-long-11 { 0% { opacity: 1; box-shadow: 0 0 8px 1px #ff5a48b0; } 27.27%, 100% { opacity: var(--rest); box-shadow: none; } }
 @keyframes flash-short-13 { 0% { opacity: 1; box-shadow: 0 0 8px 1px #ff5a48b0; } 7.69%, 100% { opacity: var(--rest); box-shadow: none; } }
 @keyframes flash-long-13 { 0% { opacity: 1; box-shadow: 0 0 8px 1px #ff5a48b0; } 23.08%, 100% { opacity: var(--rest); box-shadow: none; } }
+@keyframes needle-quiver { 0% { transform: translateX(-1px) rotate(-.7deg); } 40% { transform: translateX(.6px) rotate(.2deg); } 100% { transform: translateX(1.4px) rotate(.9deg); } }
+@keyframes ripple-shift { 0%, 100% { transform: none; } 50% { transform: translateX(1px); } }
 @keyframes lamp-ssl { 0% { opacity: 1; } 9.09% { opacity: .12; } 18.18% { opacity: 1; } 27.27% { opacity: .12; } 36.36% { opacity: 1; } 63.64%, 100% { opacity: .12; } }
 @keyframes lamp-sll { 0% { opacity: 1; } 7.69% { opacity: .12; } 15.38% { opacity: 1; } 38.46% { opacity: .12; } 46.15% { opacity: 1; } 69.23%, 100% { opacity: .12; } }
 @keyframes lamp-lss { 0% { opacity: 1; } 27.27% { opacity: .12; } 36.36% { opacity: 1; } 45.45% { opacity: .12; } 54.55% { opacity: 1; } 63.64%, 100% { opacity: .12; } }
@@ -1250,6 +1332,9 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
   .beat, .answer-ring, .call-lamp, .map-point .st-lamp, .map-point .st-halo { animation: none !important; }
   .answer-ring { display: none; }
   html[data-phase="outcome"] .map-point.is-correct .st-halo { opacity: .7; }
+  .map-point .st-reflect, .map-point .st-reflect rect, .glass-lamp, .dial-needle { animation: none !important; }
+  html[data-phase="outcome"] .map-point.is-correct :is(.st-reflect rect, .st-wash) { opacity: 1; }
+  .map-point .st-wash { animation: none !important; }
 }
 
 /* ---------- 矮屏幕的桌面：收紧纵向间距 ---------- */
@@ -1474,6 +1559,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
   .channels button { min-height: 56px; padding: 7px 16px 7px 9px; }
   .remove-quote { min-height: 44px; }
   .preset-button { min-height: 48px; }
+  .reply-quote { min-height: 44px; }
   .free-call input, .free-call .button-primary { min-height: 50px; }
   #intro-title { margin-block: 14px 18px; }
   .intro-brief { font-size: 16px; }
