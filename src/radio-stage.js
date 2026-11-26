@@ -370,6 +370,19 @@
   });
   const boardFold = folder(evidencePanel, document.querySelector('[data-evidence-fold]'), ['展开全文', '收起全文']);
 
+  // ---------- 调频窗上的红光 ----------
+  // 接通时，求救者门檐下那盏灯按当案的节奏映在玻璃上。节奏跟着每局的证词走。
+  let lampCode = null;
+  function glassLamp() {
+    if (!receiver || !lampCode || still.matches) return;
+    delete receiver.dataset.glass;
+    void receiver.offsetWidth;
+    receiver.dataset.glass = lampCode;
+  }
+  receiver?.querySelector('.glass-lamp')?.addEventListener('animationend', () => {
+    delete receiver.dataset.glass;
+  });
+
   // ---------- 逐字回放 ----------
   function replay(length = 0, delay = 0) {
     if (!transmission) return;
@@ -443,6 +456,7 @@
       desk.inert = false;
       root.dataset.intro = 'leaving';
       replay(transmission?.textContent.length ?? 0, 620);
+      later('glass', 520, glassLamp);
       window.setTimeout(() => {
         intro.hidden = true;
         stopRain();
@@ -467,9 +481,11 @@
   document.addEventListener('radio:reset', ({ detail }) => {
     staging += 1;
     firstClueSeen = false;
+    lampCode = detail.lamp ?? null;
     if (radioPanel) radioPanel.inert = false;
     map()?.clear();
     timers.forEach((timer) => window.clearTimeout(timer));
+    if (receiver) delete receiver.dataset.glass;
     document.querySelectorAll('.cite-ghost, .quote-ghost').forEach((ghost) => ghost.remove());
     setSpeaking(false);
     syncClock();
@@ -477,6 +493,7 @@
     boardFold.close();
     if (!detail.replay) return;
     replay(transmission?.textContent.length ?? 0, 200);
+    later('glass', 160, glassLamp);
     window.scrollTo({ top: 0, behavior: 'instant' });
     audio.play('answer');
   });
