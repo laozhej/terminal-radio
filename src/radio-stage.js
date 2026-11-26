@@ -374,7 +374,7 @@
   function replay(length = 0, delay = 0) {
     if (!transmission) return;
     transmission.style.setProperty('--reveal-delay', `${delay}ms`);
-    transmission.classList.remove('is-fresh', 'is-settled');
+    transmission.classList.remove('is-fresh', 'is-settled', 'is-review');
     void transmission.offsetWidth;
     transmission.classList.add('is-fresh');
     if (still.matches) return;
@@ -493,17 +493,32 @@
       later('evidence-cue', 300, () => audio.play('evidence'));
       if (!firstClueSeen) {
         firstClueSeen = true;
-        later('nudge', 900, () => flash(document.querySelector('.quote-empty'), 'is-nudged', 3200));
+        // 第一条证词到手：提示回话下面那个按钮就能引用。
+        later('nudge', 1100, () => flash(transmission?.querySelector('.reply-quote'), 'is-nudged', 2800));
       }
     }
     if (narrow.matches) receiver?.scrollIntoView({ block: 'nearest', behavior: still.matches ? 'auto' : 'smooth' });
+  });
+
+  // 回看旧回答：一段录音，整段淡入，不逐字、不动指针，也不再飞证据条。
+  document.addEventListener('radio:review', () => {
+    audio.play('tune');
+    if (!transmission) return;
+    transmission.classList.remove('is-fresh', 'is-review');
+    void transmission.offsetWidth;
+    transmission.classList.add('is-review');
+    window.clearTimeout(timers.get('speaking-end'));
+    setSpeaking(false);
   });
 
   document.addEventListener('radio:denied', ({ detail }) => {
     audio.play('deny');
     flash(byId('radio-feedback'), 'is-shaking', 500);
     if (detail.reason !== 'quote') return;
-    if (detail.held) flash(document.querySelector(`.quote-button[data-evidence-id="${detail.needs}"]`), 'is-wanted', 2600);
+    if (detail.held) {
+      flash(document.querySelector(`.reply-quote[data-reply-quote="${detail.needs}"]`), 'is-wanted', 2600);
+      flash(document.querySelector(`.quote-button[data-evidence-id="${detail.needs}"]`), 'is-wanted', 2600);
+    }
     else flash(document.querySelector('#radio-channels [data-channel="caller"]'), 'is-suggested', 2600);
   });
 
@@ -580,7 +595,10 @@
       return;
     }
     audio.play('quote');
-    const card = document.querySelector(`.evidence-card[data-clue="${detail.id}"]`);
+    // 从哪里按的就从哪里飞：回话下面的按钮，或证据板上的卡。
+    const card = detail.from === 'reply'
+      ? transmission?.querySelector(`.reply-quote[data-reply-quote="${detail.id}"]`)
+      : document.querySelector(`.evidence-card[data-clue="${detail.id}"]`);
     const dock = byId('active-quote');
     if (!card || !dock) return;
     flash(dock, 'is-landing', 700);
@@ -592,7 +610,7 @@
     const ghost = document.createElement('div');
     ghost.className = 'quote-ghost';
     ghost.setAttribute('aria-hidden', 'true');
-    ghost.textContent = card.querySelector('.evidence-name')?.textContent ?? '';
+    ghost.textContent = document.querySelector(`.evidence-card[data-clue="${detail.id}"] .evidence-name`)?.textContent ?? '';
     Object.assign(ghost.style, {
       left: `${from.left + window.scrollX}px`,
       top: `${from.top + window.scrollY}px`,

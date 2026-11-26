@@ -632,9 +632,40 @@ html[data-busy="true"] .dial-mark { opacity: 0; }
 .transmission-message { font-size: 18px; line-height: 1.75; }
 /* 构成证据的那几个字：琥珀下划线，画在每个字底下，随字一起出现，空格处也连着。 */
 .cite .glyph { background: linear-gradient(var(--amber) 0 0) left bottom / 100% 1.5px no-repeat; }
-.transmission-notes { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; }
+.transmission-notes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 8px; }
 .transmission-note { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .02em; }
 .transmission-note.is-heard::before { content: "↳ "; color: var(--line-strong); }
+.transmission-note.is-review { color: var(--amber); }
+.transmission-review { margin-left: auto; color: var(--amber); font-size: 12px; font-weight: 650; letter-spacing: .1em; }
+.transmission-review + .transmission-clock { margin-left: 0; }
+/* 回话下面的引用：和证据卡底部的「引用」一样是一行文字按钮，琥珀色，因为它能按。 */
+.reply-quote {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  margin-left: -8px;
+  padding: 0 10px 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--amber);
+  font-size: 14px;
+  font-weight: 650;
+  text-align: left;
+  transition: background .15s, border-color .15s;
+}
+.reply-quote-action { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.reply-quote-action::before { content: "↗"; display: inline-block; margin-right: 6px; font-size: 13px; text-decoration: none; }
+.reply-quote-tag { color: var(--muted); font-size: 12px; font-weight: 600; }
+.reply-quote:not(:disabled):hover { border-color: var(--amber-dim); background: var(--amber-surface); }
+.reply-quote[aria-pressed="true"] { border-color: var(--amber-dim); background: var(--amber-surface); }
+.reply-quote[aria-pressed="true"] .reply-quote-action { text-decoration: none; }
+.reply-quote[aria-pressed="true"] .reply-quote-action::before { content: "✓"; }
+.reply-quote:disabled { color: var(--muted); opacity: .6; }
+.reply-quote.is-nudged, .reply-quote.is-wanted { animation: beckon .65s ease-in-out 4 alternate; }
+/* 回看是录音，不逐字打出，整段淡入。 */
+.transmission.is-review { animation: review-in .35s ease-out; }
 .transmission.is-fresh:not(.is-settled) .glyph {
   opacity: 0;
   animation: appear 70ms linear forwards;
@@ -890,6 +921,12 @@ html[data-calls="0"] .channels button { opacity: .4; }
 .preset-button:not(:disabled):active { transform: translateY(1px); }
 .preset-button:disabled { color: var(--muted); border-color: #1f3049; background: #0c1624; }
 .preset-button:disabled::after { border-color: var(--line-strong); }
+.preset-question { min-width: 0; }
+/* 问过的题：虚线框，标「已问 · 回看」，再点不扣通话。 */
+.preset-button.is-asked { border-style: dashed; color: #c9c4b8; }
+.preset-button.is-asked::after { display: none; }
+.preset-asked { flex: none; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; white-space: nowrap; transition: color .15s; }
+.preset-button.is-asked:not(:disabled):hover .preset-asked { color: var(--amber); }
 
 /* ---------- 证据板：固定空位，到手的是纸卡 ---------- */
 .evidence-panel { padding: 12px 16px 18px; }
@@ -1211,6 +1248,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
 /* ---------- 动效 ---------- */
 @keyframes appear { to { opacity: 1; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } }
+@keyframes review-in { from { opacity: .2; } }
 @keyframes slip-in { from { opacity: 0; transform: translateY(-16px) rotate(-1.6deg); } }
 @keyframes land { 0% { transform: scale(.94); } 45% { transform: scale(1.02); } 100% { transform: none; } }
 @keyframes card-land { 0% { opacity: 0; transform: translateY(-10px) scale(.96); } 60% { opacity: 1; transform: translateY(2px) scale(1.015); } 100% { opacity: 1; transform: none; } }
@@ -1474,6 +1512,7 @@ html[data-phase="outcome"] .map-point.is-correct[data-lamp="lls"] :is(.st-lamp, 
   .channels button { min-height: 56px; padding: 7px 16px 7px 9px; }
   .remove-quote { min-height: 44px; }
   .preset-button { min-height: 48px; }
+  .reply-quote { min-height: 44px; }
   .free-call input, .free-call .button-primary { min-height: 50px; }
   #intro-title { margin-block: 14px 18px; }
   .intro-brief { font-size: 16px; }
